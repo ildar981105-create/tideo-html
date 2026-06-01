@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo API 端到端测试</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:#0a0a0f;color:#e2e8f0;padding:32px;max-width:800px;margin:0 auto}
+h1{font-size:1.2rem;margin-bottom:8px}
+.desc{font-size:.8rem;color:#64748b;margin-bottom:24px}
+.step{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:12px}
+.step-title{font-size:.85rem;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.step-status{font-size:.7rem;padding:2px 8px;border-radius:4px;font-weight:500}
+.waiting{background:rgba(100,116,139,0.2);color:#94a3b8}
+.running{background:rgba(129,140,248,0.2);color:#818cf8}
+.done{background:rgba(16,185,129,0.2);color:#10b981}
+.fail{background:rgba(239,68,68,0.2);color:#ef4444}
+.step-detail{font-size:.75rem;color:#94a3b8;margin-top:6px;word-break:break-all}
+.step-detail pre{background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;overflow-x:auto;margin-top:4px;font-size:.68rem;max-height:200px;overflow-y:auto}
+input[type=file]{display:none}
+.upload-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:10px;background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;font-size:.85rem;font-weight:600;border:none;cursor:pointer;transition:all .2s}
+.upload-btn:hover{filter:brightness(1.1)}
+.upload-btn:disabled{opacity:.5;cursor:not-allowed}
+.progress-bar{height:6px;border-radius:3px;background:rgba(255,255,255,0.1);overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#818cf8,#a78bfa);transition:width .3s}
+.mode-select{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;font-size:.8rem;margin-bottom:12px}
+.log{margin-top:20px;padding:12px;background:rgba(0,0,0,0.4);border-radius:8px;font-size:.7rem;color:#64748b;max-height:300px;overflow-y:auto;font-family:monospace}
+.log .info{color:#94a3b8}.log .ok{color:#10b981}.log .err{color:#ef4444}.log .warn{color:#f59e0b}
+</style>
+</head>
+<body>
+<h1>🧪 Tideo API 端到端测试</h1>
+<p class="desc">上传一个短视频（建议10-30秒），测试完整链路：COS上传 → MPS处理 → 轮询结果</p>
+
+<select class="mode-select" id="modeSelect">
+    <option value="full">完整模式（擦除+字幕+配音）</option>
+    <option value="erase">仅擦除</option>
+    <option value="subtitle">仅字幕</option>
+    <option value="voice">仅配音</option>
+</select>
+<br>
+<input type="file" id="fileInput" accept="video/*,.mp4,.mov,.avi,.mkv">
+<button class="upload-btn" id="startBtn" onclick="document.getElementById('fileInput').click()">📤 选择视频文件开始测试</button>
+
+<div style="margin-top:20px">
+    <div class="step" id="s1">
+        <div class="step-title">① COS 上传 <span class="step-status waiting" id="s1s">等待</span></div>
+        <div class="step-detail" id="s1d"></div>
+    </div>
+    <div class="step" id="s2">
+        <div class="step-title">② 发起 MPS 任务 <span class="step-status waiting" id="s2s">等待</span></div>
+        <div class="step-detail" id="s2d"></div>
+    </div>
+    <div class="step" id="s3">
+        <div class="step-title">③ 轮询任务状态 <span class="step-status waiting" id="s3s">等待</span></div>
+        <div class="step-detail" id="s3d"></div>
+    </div>
+    <div class="step" id="s4">
+        <div class="step-title">④ 最终结果 <span class="step-status waiting" id="s4s">等待</span></div>
+        <div class="step-detail" id="s4d"></div>
+    </div>
+</div>
+
+<div class="log" id="logBox"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/cos-js-sdk-v5@1.8.5/dist/cos-js-sdk-v5.min.js"></script>
+<script src="api-client.js"></script>
+<script>
+var logBox = document.getElementById('logBox');
+function log(msg, cls) {
+    var t = new Date().toLocaleTimeString();
+    logBox.innerHTML += '<div class="'+(cls||'info')+'">['+t+'] '+msg+'</div>';
+    logBox.scrollTop = logBox.scrollHeight;
+}
+function setStatus(id, status, text) {
+    var el = document.getElementById(id+'s');
+    el.className = 'step-status ' + status;
+    el.textContent = text;
+}
+function setDetail(id, html) {
+    document.getElementById(id+'d').innerHTML = html;
+}
+
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var mode = document.getElementById('modeSelect').value;
+    var btn = document.getElementById('startBtn');
+    btn.disabled = true;
+    btn.textContent = '测试进行中...';
+
+    log('选择文件: ' + file.name + ' (' + (file.size/1048576).toFixed(1) + 'MB)', 'info');
+    log('模式: ' + mode, 'info');
+
+    // Step 1: COS 上传
+    setStatus('s1', 'running', '上传中...');
+    setDetail('s1', '<div class="progress-bar"><div class="progress-fill" id="uploadFill" style="width:0%"></div></div><div style="margin-top:4px" id="uploadPct">0%</div>');
+    log('开始上传到 COS...', 'info');
+
+    var videoUrl;
+    try {
+        var result = await TideoAPI.uploadFile(file, function(pct) {
+            var p = Math.round(pct * 100);
+            document.getElementById('uploadFill').style.width = p + '%';
+            document.getElementById('uploadPct').textContent = p + '%';
+        });
+        videoUrl = result.url;
+        setStatus('s1', 'done', '完成');
+        setDetail('s1', 'COS URL: <code>' + videoUrl + '</code>');
+        log('上传成功: ' + videoUrl, 'ok');
+    } catch(err) {
+        setStatus('s1', 'fail', '失败');
+        setDetail('s1', '错误: ' + err.message);
+        log('上传失败: ' + err.message, 'err');
+        btn.disabled = false; btn.textContent = '📤 重新测试';
+        return;
+    }
+
+    // Step 2: 发起 MPS 任务
+    setStatus('s2', 'running', '调用中...');
+    log('发起 MPS ' + mode + ' 任务...', 'info');
+
+    var taskId;
+    try {
+        var r = await TideoAPI.translate({ videoUrl: videoUrl, mode: mode, srcLang: 'zh', dstLang: 'en' });
+        taskId = r.taskId;
+        setStatus('s2', 'done', '完成');
+        setDetail('s2', 'TaskId: <code>' + taskId + '</code>');
+        log('任务创建成功: ' + taskId, 'ok');
+    } catch(err) {
+        setStatus('s2', 'fail', '失败');
+        setDetail('s2', '错误: ' + err.message);
+        log('任务创建失败: ' + err.message, 'err');
+        btn.disabled = false; btn.textContent = '📤 重新测试';
+        return;
+    }
+
+    // Step 3: 轮询
+    setStatus('s3', 'running', '轮询中...');
+    var pollCount = 0;
+    log('开始轮询任务状态（每5秒）...', 'info');
+
+    try {
+        var task = await TideoAPI.pollTask(taskId, {
+            interval: 5000,
+            timeout: 600000,
+            onProgress: function(t) {
+                pollCount++;
+                log('轮询 #' + pollCount + ' → 状态: ' + t.status, t.status === 'FINISH' ? 'ok' : 'info');
+                setDetail('s3', '已轮询 ' + pollCount + ' 次，当前状态: <strong>' + t.status + '</strong>');
+            }
+        });
+        setStatus('s3', 'done', '完成');
+        log('任务完成！', 'ok');
+
+        // Step 4: 展示结果
+        setStatus('s4', 'done', '完成');
+        var detail = task.detail || {};
+        var hasError = detail.ErrCode && detail.ErrCode !== 0;
+
+        if (hasError) {
+            setStatus('s4', 'warn', '有错误');
+            setDetail('s4', '<div style="color:#f59e0b">ErrCode: ' + detail.ErrCode + ', Message: ' + (detail.Message||'') + '</div><pre>' + JSON.stringify(task, null, 2) + '</pre>');
+            log('任务完成但有错误: ' + detail.Message, 'warn');
+        } else {
+            setDetail('s4', '<pre>' + JSON.stringify(task, null, 2) + '</pre>');
+            log('✅ 端到端测试完成！全部成功', 'ok');
+        }
+
+    } catch(err) {
+        setStatus('s3', 'fail', '失败');
+        setDetail('s3', '错误: ' + err.message);
+        log('轮询失败: ' + err.message, 'err');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '📤 重新测试';
+});
+</script>
+</body>
+</html>

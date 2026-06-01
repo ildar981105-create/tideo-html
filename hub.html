@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo · 产品中心</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:#08080c;color:#e2e8f0;min-height:100vh}
+.page{max-width:920px;margin:0 auto;padding:36px 20px 80px}
+
+/* Header */
+.hd{margin-bottom:36px}
+.hd h1{font-size:1.6rem;font-weight:800;letter-spacing:-.02em}
+.hd p{font-size:.82rem;color:#64748b;margin-top:4px}
+
+/* Hero card — 产品入口 */
+.hero{display:block;text-decoration:none;color:inherit;background:linear-gradient(135deg,rgba(129,140,248,0.08),rgba(99,102,241,0.04));border:1px solid rgba(129,140,248,0.2);border-radius:18px;padding:28px 28px 24px;margin-bottom:32px;transition:all .3s;position:relative;overflow:hidden}
+.hero:hover{border-color:rgba(129,140,248,0.4);transform:translateY(-2px);box-shadow:0 12px 40px rgba(99,102,241,0.1)}
+.hero::after{content:'→';position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:1.4rem;color:rgba(129,140,248,0.4);transition:all .3s}
+.hero:hover::after{right:20px;color:#818cf8}
+.hero h2{font-size:1.15rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.hero h2 .live{font-size:.6rem;padding:3px 9px;border-radius:5px;background:rgba(16,185,129,0.15);color:#10b981;font-weight:600}
+.hero .desc{font-size:.82rem;color:#94a3b8;line-height:1.6}
+.hero .tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.hero .tag{font-size:.65rem;padding:3px 10px;border-radius:5px;background:rgba(255,255,255,0.06);color:#64748b}
+
+/* Section */
+.sec{margin-bottom:32px}
+.sec-title{font-size:.92rem;font-weight:700;color:#cbd5e1;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-title .ic{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.78rem}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+
+/* Card */
+.card{display:block;text-decoration:none;color:inherit;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px 18px;transition:all .25s}
+.card:hover{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);transform:translateY(-1px)}
+.card h3{font-size:.88rem;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.card p{font-size:.75rem;color:#64748b;line-height:1.5}
+.badge{font-size:.58rem;padding:2px 7px;border-radius:4px;font-weight:600}
+.b-new{background:rgba(245,158,11,0.12);color:#f59e0b}
+.b-tool{background:rgba(168,85,247,0.1);color:#a855f7}
+.b-doc{background:rgba(6,182,212,0.1);color:#06b6d4}
+
+/* Collapse */
+.collapse-trigger{cursor:pointer;display:flex;align-items:center;gap:6px;font-size:.78rem;color:#475569;padding:8px 0;transition:color .2s}
+.collapse-trigger:hover{color:#94a3b8}
+.collapse-trigger svg{transition:transform .2s}
+.collapse-trigger.open svg{transform:rotate(90deg)}
+.collapse-body{max-height:0;overflow:hidden;transition:max-height .3s}
+.collapse-body.open{max-height:2000px}
+
+/* Minor links */
+.minor{display:flex;flex-direction:column;gap:8px;padding:12px 0}
+.minor-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);font-size:.78rem;transition:background .2s}
+.minor-item:hover{background:rgba(255,255,255,0.04)}
+.minor-item a{color:#818cf8;text-decoration:none;font-weight:500}
+.minor-item a:hover{text-decoration:underline}
+.minor-item .ml{color:#475569;font-size:.72rem;flex:1}
+.minor-item .mb{font-size:.58rem;padding:2px 7px;border-radius:4px;background:rgba(100,116,139,0.1);color:#64748b}
+
+/* Divider */
+.divider{height:1px;background:rgba(255,255,255,0.04);margin:8px 0 20px}
+
+@media(max-width:600px){
+    .page{padding:20px 16px 60px}
+    .hd h1{font-size:1.2rem}
+    .hero{padding:20px}
+    .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+    <div class="hd">
+        <h1>Tideo 产品中心</h1>
+        <p>产品、测试、规划的统一入口</p>
+    </div>
+
+    <!-- ===== 产品入口（最醒目） ===== -->
+    <a class="hero" href="create.html" data-create-link>
+        <h2>打开产品 <span class="live">视觉稿还原版</span></h2>
+        <div class="desc">Tideo — 腾讯云音视频能力的轻量化统一平台。首期提供视频译制、直播剪辑、视频创作三大功能，开箱即用。当前版本为视觉稿最终还原。</div>
+        <div class="tags">
+            <span class="tag">视频译制</span>
+            <span class="tag">直播剪辑</span>
+            <span class="tag">视频创作</span>
+            <span class="tag">视觉稿还原</span>
+        </div>
+    </a>
+
+    <!-- ===== Skills 沉淀 ===== -->
+    <div class="sec">
+        <div class="sec-title"><span class="ic" style="background:rgba(16,185,129,0.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span> AI Skills 沉淀 <span style="font-size:.68rem;font-weight:400;color:#475569;margin-left:4px">内网 Git 仓库 · 当前仅保留 2 个可复用 Skill</span></div>
+        <div class="grid">
+            <a class="card" href="https://git.woa.com/darianyi/design-reviewer-skill" target="_blank" rel="noopener noreferrer">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> design-reviewer-skill <span class="badge b-new">保留</span></h3>
+                <p>设计评审工具 Skill 仓库：面向页面评审、标注评论、导出结果等协作场景的能力沉淀。</p>
+            </a>
+            <a class="card" href="https://git.woa.com/darianyi/vibe-test-toolkit" target="_blank" rel="noopener noreferrer">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg> vibe-test-toolkit <span class="badge b-new">保留</span></h3>
+                <p>Vibe 测试工具 Skill 仓库：围绕行为采集、问卷触发、体验验证与测试闭环的能力沉淀。</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== 设计稿 ===== -->
+    <div class="sec">
+        <div class="sec-title"><span class="ic" style="background:rgba(129,140,248,0.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg></span> 设计稿</div>
+        <div class="grid">
+            <a class="card" href="review.html">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> 设计评审工具 <span class="badge b-new">新</span></h3>
+                <p>一个页面浏览全部设计稿 — 左侧菜单切换、iframe 实时预览、点击页面任意位置加备注（交互 / 问题 / 建议 / 设计意图），一键导出 Markdown。</p>
+            </a>
+            <a class="card" href="https://ardot.tencent.com/file/671265687212823" target="_blank">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> 交互稿 <span class="badge b-doc">Ardot</span></h3>
+                <p>产品交互原型 — 页面结构、功能流程、操作路径的完整定义。</p>
+            </a>
+            <a class="card" href="https://ardot.tencent.com/file/666961764682313?node_id=35%3A302" target="_blank">
+                <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg> 视觉稿 <span class="badge b-new">最新</span></h3>
+                <p>最终视觉设计 — 色彩、排版、组件、动效的完整视觉规范。</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== 用户测试 ===== -->
+    <div class="sec">
+        <div class="sec-title"><span class="ic" style="background:rgba(245,158,11,0.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></span> 用户测试</div>
+        <div class="grid">
+            <a class="card" href="test-dashboard.html">
+                <h3>测试中心 <span class="badge b-new">核心</span></h3>
+                <p>生成链接 → 查看数据，两步搞定。KPI · 漏斗 · 问题发现 · 操作路径。</p>
+            </a>
+            <a class="card" href="test-api.html">
+                <h3>API 链路验证 <span class="badge b-tool">工具</span></h3>
+                <p>上传一个视频跑一遍完整链路，验证从上传到出成片是否通畅。</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== 研究与规划 ===== -->
+    <div class="sec">
+        <div class="sec-title"><span class="ic" style="background:rgba(6,182,212,0.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></span> 研究与规划</div>
+        <div class="grid">
+            <a class="card" href="project-timeline.html">
+                <h3>项目时间线 <span class="badge b-new">重要</span></h3>
+                <p>从 av-saas 到 Tideo 的完整演进历程 — 每个阶段做了什么、为什么做、关键决策。</p>
+            </a>
+            <a class="card" href="product-brief.html">
+                <h3>产品逻辑文档 <span class="badge b-doc">文档</span></h3>
+                <p>产品是什么、做了哪些功能、技术架构、当前状态、下一步计划。</p>
+            </a>
+            <a class="card" href="prd.html">
+                <h3>PRD 产品需求文档 <span class="badge b-new">新</span></h3>
+                <p>完整 PRD — 产品入口、账号体系、功能模块、精调规范、技术架构。支持一键复制。</p>
+            </a>
+            <a class="card" href="experience-framework.html">
+                <h3>体验验证框架</h3>
+                <p>AI 产品体验设计的方法论 — 验证维度、评估标准、执行流程。</p>
+            </a>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ===== 更多（折叠） ===== -->
+    <div class="collapse-trigger" onclick="this.classList.toggle('open');document.getElementById('moreBody').classList.toggle('open')">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2L8 6L4 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        更多：历史版本、技术设施、子页面
+    </div>
+    <div class="collapse-body" id="moreBody">
+        <div class="minor">
+            <!-- 历史版本 -->
+            <div style="font-size:.72rem;font-weight:600;color:#475569;padding:4px 0 2px">产品版本历史（改名路径：av-saas → FrameX → Tideo）</div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>visual1</a><span class="ml">视觉稿最终版（视觉还原）</span><span class="mb" style="background:rgba(16,185,129,0.12);color:#10b981">当前</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>real1</a><span class="ml">交互稿版（真实 API 接入）</span><span class="mb">封存</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>f1</a><span class="ml">前端原型版（模拟数据）</span><span class="mb">封存</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>model</a><span class="ml">v7 视频 Loading 版 + v6-a2 像素工作室版</span><span class="mb">封存</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>Tideo</a><span class="ml">品牌改名后第一版</span><span class="mb">封存</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>framex-studio</a><span class="ml">FrameX Studio 时期</span><span class="mb">封存</span></div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>framex-app</a><span class="ml">最初版本（av-saas）</span><span class="mb">封存</span></div>
+
+            <!-- 技术设施 -->
+            <div style="font-size:.72rem;font-weight:600;color:#475569;padding:12px 0 2px">技术基础设施</div>
+            <div class="minor-item"><a href="create.html" target="_blank" data-create-link>内网部署</a><span class="ml">当前产品演示环境（create.html）</span><span class="mb" style="background:rgba(16,185,129,0.12);color:#10b981">当前</span></div>
+            <div class="minor-item"><a href="https://1306264703-4mtd7pg0gt.ap-guangzhou.tencentscf.com/" target="_blank">SCF 云函数</a><span class="ml">API 代理（/translate · /task · /track）</span></div>
+            <div class="minor-item"><a href="https://console.cloud.tencent.com/cos/bucket" target="_blank">COS 存储桶</a><span class="ml">saastestdarianyi-1306264703 · 广州</span></div>
+            <div class="minor-item"><a href="https://console.cloud.tencent.com/mps" target="_blank">MPS 媒体处理</a><span class="ml">视频译制引擎 · Definition=25</span></div>
+            <div class="minor-item"><span style="color:#475569">GitHub 仓库</span><span class="ml">visual1 源代码（已设为私有）</span><span class="mb">私密</span></div>
+
+            <!-- 子页面 -->
+            <div style="font-size:.72rem;font-weight:600;color:#475569;padding:12px 0 2px">产品子页面</div>
+            <div class="minor-item"><a href="review.html">设计评审工具</a><span class="ml">review.html — 页面导航 + 标注 + 评论 + 导出</span><span class="mb" style="background:rgba(245,158,11,0.12);color:#f59e0b">新</span></div>
+            <div class="minor-item"><a href="create.html">创作入口</a><span class="ml">create.html — 技能选择 + 视频上传</span></div>
+            <div class="minor-item"><a href="translate-v8.html">视频译制 v8</a><span class="ml">沉浸式工作坊 — 真实 API</span></div>
+            <div class="minor-item"><a href="livestream-v3.html">直播剪辑 v3</a><span class="ml">精调直入版</span></div>
+            <div class="minor-item"><a href="generate.html">AI 视频生成</a><span class="ml">模拟版</span></div>
+            <div class="minor-item"><a href="editor-v2.html">视频编辑器</a><span class="ml">时间线编辑</span></div>
+            <div class="minor-item"><a href="media.html">素材管理</a></div>
+            <div class="minor-item"><a href="result.html">任务记录</a></div>
+            <div class="minor-item"><a href="login.html">登录页</a></div>
+            <div class="minor-item"><a href="api.html">API 文档页</a></div>
+        </div>
+    </div>
+
+</div>
+<script src="deploy-config.js"></script>
+<script>
+(function() {
+    var config = window.TIDEO_DEPLOYMENT;
+    if (!config || !config.createUrl) return;
+    document.querySelectorAll('[data-create-link]').forEach(function(link) {
+        link.href = config.createUrl;
+    });
+})();
+</script>
+</body>
+</html>

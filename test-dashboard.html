@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo · 用户测试中心</title>
+<style>
+/* =================================================================
+   Design Tokens — 统一设计系统
+   ================================================================= */
+:root{
+    /* 色彩 */
+    --bg:#0b0b10;
+    --bg-2:#111218;
+    --surface:rgba(255,255,255,0.028);
+    --surface-hover:rgba(255,255,255,0.05);
+    --border:rgba(255,255,255,0.07);
+    --border-strong:rgba(255,255,255,0.12);
+    --divider:rgba(255,255,255,0.045);
+    /* 文本 */
+    --t-1:#f1f5f9;
+    --t-2:#cbd5e1;
+    --t-3:#94a3b8;
+    --t-4:#64748b;
+    --t-5:#475569;
+    --t-6:#334155;
+    /* 主色（唯一强调色） */
+    --brand:#f59e0b;
+    --brand-2:#fbbf24;
+    --brand-soft:rgba(245,158,11,0.1);
+    --brand-soft-2:rgba(245,158,11,0.18);
+    --brand-border:rgba(245,158,11,0.22);
+    /* 辅助色（仅用于语义） */
+    --ok:#10b981;
+    --warn:#f59e0b;
+    --err:#ef4444;
+    --info:#818cf8;
+    /* 圆角 */
+    --r-sm:8px;
+    --r:10px;
+    --r-lg:14px;
+    --r-xl:18px;
+    /* 间距 */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px;
+    /* 字号 */
+    --fs-xs:.68rem;
+    --fs-sm:.76rem;
+    --fs-md:.84rem;
+    --fs-lg:1rem;
+    --fs-xl:1.5rem;
+    /* 阴影 */
+    --shadow-sm:0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md:0 8px 24px rgba(0,0,0,0.35);
+    --shadow-glow:0 2px 14px rgba(245,158,11,0.22);
+    /* 过渡 */
+    --tr:.18s ease;
+}
+
+/* ===== Icons ===== */
+.ic{width:18px;height:18px;flex-shrink:0}
+.ic-16{width:16px;height:16px;flex-shrink:0}
+.ic-14{width:14px;height:14px;flex-shrink:0}
+
+/* ===== Base ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+    background:radial-gradient(ellipse at 20% -10%,rgba(245,158,11,0.06) 0%,transparent 55%),var(--bg);
+    color:var(--t-2);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    font-feature-settings:"cv11","ss01";
+    letter-spacing:-0.005em;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+::selection{background:rgba(245,158,11,0.3);color:#fff}
+
+/* ===== Layout ===== */
+.wrap{max-width:880px;margin:0 auto;padding:40px 24px 120px}
+@media(max-width:600px){.wrap{padding:24px 16px 80px}}
+
+/* ===== Header ===== */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;gap:16px;flex-wrap:wrap}
+.page-header h1{font-size:var(--fs-xl);font-weight:700;letter-spacing:-.025em;display:flex;align-items:center;gap:14px;color:var(--t-1)}
+.h1-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(245,158,11,0.06));border:1px solid var(--brand-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08)}
+.h1-icon svg{color:var(--brand);width:20px;height:20px}
+.subtitle{font-size:var(--fs-sm);color:var(--t-4);margin-top:6px;letter-spacing:0;line-height:1.5}
+.nav-btn{padding:9px 16px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--t-3);font-size:var(--fs-sm);font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--tr);flex-shrink:0}
+.nav-btn:hover{background:var(--surface-hover);border-color:var(--border-strong);color:var(--t-1)}
+
+/* ===== Stepper — 更干净的样式 ===== */
+.stepper{display:flex;align-items:center;gap:0;margin-bottom:32px;border-radius:var(--r-lg)}
+.stp{display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:var(--r);cursor:pointer;transition:all var(--tr);user-select:none;flex:1;position:relative;background:var(--surface);border:1px solid var(--border)}
+.stp:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+.stp.active{background:rgba(245,158,11,0.08);border-color:var(--brand-border)}
+.stp-num{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;flex-shrink:0;transition:all .3s;background:rgba(255,255,255,0.04);color:var(--t-4);border:1px solid var(--border)}
+.stp.active .stp-num{background:var(--brand);color:#0b0b10;border-color:transparent;box-shadow:0 0 12px rgba(245,158,11,0.35)}
+.stp.done .stp-num{background:rgba(16,185,129,0.12);color:var(--ok);border-color:rgba(16,185,129,0.2)}
+.stp-label{font-size:var(--fs-md);font-weight:600;color:var(--t-4);transition:color var(--tr);letter-spacing:-0.005em}
+.stp.active .stp-label{color:var(--t-1)}
+.stp-hint{font-size:var(--fs-xs);color:var(--t-6);margin-top:2px;font-weight:400}
+.stp.active .stp-hint{color:var(--t-4)}
+.stp-line{flex:0 0 16px;height:1px;background:var(--divider);margin:0}
+.stp-line.done{background:rgba(16,185,129,0.25)}
+
+/* ===== Section ===== */
+.section{display:none;animation:fadeUp .3s ease}
+.section.visible{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== Divider ===== */
+.divider{height:1px;background:var(--divider);margin:0}
+
+/* ===== Form — 更克制 ===== */
+.form-row{display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.form-row label{font-size:var(--fs-sm);color:var(--t-4);min-width:72px;font-weight:500;flex-shrink:0}
+.form-row input,.form-row select{
+    padding:10px 14px;border-radius:var(--r);
+    background:var(--surface);border:1px solid var(--border);
+    color:var(--t-1);font-size:var(--fs-sm);
+    transition:border-color var(--tr),background var(--tr);
+    flex:1;min-width:0;font-family:inherit;
+}
+.form-row input::placeholder{color:var(--t-6)}
+.form-row input:hover,.form-row select:hover{border-color:var(--border-strong);background:var(--surface-hover)}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--brand-border);background:var(--surface-hover);box-shadow:0 0 0 3px rgba(245,158,11,0.08)}
+
+/* ===== Buttons — 统一系统 ===== */
+.btn{padding:10px 18px;border-radius:var(--r);border:1px solid transparent;font-size:var(--fs-sm);font-weight:600;cursor:pointer;transition:all var(--tr);display:inline-flex;align-items:center;gap:6px;letter-spacing:-0.005em;white-space:nowrap}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--brand);color:#0b0b10;box-shadow:var(--shadow-glow)}
+.btn-primary:hover{background:var(--brand-2);box-shadow:0 4px 20px rgba(245,158,11,0.35)}
+.btn-amber{background:var(--brand);color:#0b0b10;box-shadow:var(--shadow-glow)}
+.btn-amber:hover{background:var(--brand-2);box-shadow:0 4px 20px rgba(245,158,11,0.35)}
+.btn-ghost{background:var(--surface);border-color:var(--border);color:var(--t-2)}
+.btn-ghost:hover{background:var(--surface-hover);color:var(--t-1);border-color:var(--border-strong)}
+.btn-sm{padding:8px 14px;font-size:var(--fs-xs);border-radius:var(--r-sm)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ===== Checkbox ===== */
+input[type="checkbox"]{accent-color:var(--brand);width:15px;height:15px;cursor:pointer;flex-shrink:0}
+
+/* ===== Link List — 链接条目 ===== */
+.link-list{margin-top:var(--sp-4);display:flex;flex-direction:column;gap:6px}
+.link-item{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);transition:all var(--tr)}
+.link-item:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+.link-uid{font-weight:600;color:var(--brand);min-width:92px;font-size:var(--fs-sm);flex-shrink:0;font-variant-numeric:tabular-nums}
+.link-url{flex:1;font-size:.68rem;color:var(--t-5);word-break:break-all;line-height:1.4;font-family:'SF Mono',Monaco,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-copy{padding:6px 14px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;color:var(--t-3);font-size:var(--fs-xs);font-weight:500;cursor:pointer;white-space:nowrap;transition:all var(--tr);flex-shrink:0}
+.link-copy:hover{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-border)}
+.link-copy.copied{background:rgba(16,185,129,0.12);color:var(--ok);border-color:rgba(16,185,129,0.2)}
+.link-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+
+/* ===== Howto ===== */
+.howto{margin-top:20px;padding:16px 18px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--brand-border)}
+.howto-title{font-size:var(--fs-sm);font-weight:600;color:var(--brand-2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.howto p{font-size:var(--fs-sm);color:var(--t-4);line-height:1.75}
+
+/* ===== Toast ===== */
+.toast-container{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{padding:11px 18px;border-radius:var(--r);font-size:var(--fs-sm);font-weight:500;transform:translateX(120%);animation:toastIn .3s ease forwards;box-shadow:var(--shadow-md);pointer-events:all;backdrop-filter:blur(12px)}
+.toast.success{background:rgba(16,185,129,0.95);color:#fff}
+.toast.error{background:rgba(239,68,68,0.95);color:#fff}
+@keyframes toastIn{to{transform:translateX(0)}}
+
+/* ===== Toolbar ===== */
+.toolbar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.toolbar select{padding:9px 14px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--t-1);font-size:var(--fs-sm);font-family:inherit;cursor:pointer}
+.toolbar select:hover{border-color:var(--border-strong)}
+.toolbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.update-time{font-size:var(--fs-xs);color:var(--t-5)}
+.auto-badge{font-size:var(--fs-xs);color:var(--t-4);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:var(--r-sm)}
+
+/* ===== KPI Row — 核心指标 ===== */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
+@media(max-width:700px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
+.kpi{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--r-lg);padding:14px 10px;text-align:center;
+    transition:all var(--tr);position:relative;overflow:hidden;
+}
+.kpi:hover{border-color:var(--border-strong);background:var(--surface-hover);transform:translateY(-1px)}
+.kpi::before{content:'';position:absolute;top:0;left:12px;right:12px;height:2px;border-radius:0 0 2px 2px;opacity:0.7}
+.kpi.green::before{background:var(--ok)}
+.kpi.yellow::before{background:var(--brand)}
+.kpi.red::before{background:var(--err)}
+.kpi.neutral::before{background:var(--t-5)}
+.kpi .kv{font-size:1.4rem;font-weight:700;line-height:1;margin-bottom:4px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+.kpi.green .kv{color:var(--ok)}
+.kpi.yellow .kv{color:var(--brand)}
+.kpi.red .kv{color:var(--err)}
+.kpi.neutral .kv{color:var(--t-3)}
+.kpi .kl{font-size:var(--fs-xs);color:var(--t-4);font-weight:500;letter-spacing:0}
+.kpi .kvsub{font-size:.62rem;color:var(--t-6);margin-top:3px}
+
+/* ===== Card ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;margin-bottom:12px}
+.card-title{font-size:var(--fs-md);font-weight:600;color:var(--t-1);margin-bottom:16px;display:flex;align-items:center;gap:8px;letter-spacing:-0.005em}
+.card-title svg{color:var(--t-4)}
+.card-label{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t-5);margin-bottom:10px}
+
+/* ===== Funnel — 转化漏斗 ===== */
+.funnel{display:flex;gap:0;align-items:stretch;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:rgba(0,0,0,0.15)}
+.funnel-step{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 6px;transition:background var(--tr)}
+.funnel-step:hover{background:rgba(255,255,255,0.02)}
+.funnel-step::after{content:'';position:absolute;right:0;top:20%;bottom:20%;width:1px;background:var(--divider)}
+.funnel-step:last-child::after{display:none}
+.fs-val{font-size:1.2rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.fs-label{font-size:var(--fs-xs);color:var(--t-4);margin-top:6px;text-align:center;line-height:1.3}
+.fs-pct{font-size:.58rem;color:var(--t-6);margin-top:3px}
+.fs-bar{width:70%;height:3px;border-radius:2px;margin-top:8px;background:rgba(255,255,255,0.04);overflow:hidden}
+.fs-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+
+/* ===== Issues — 问题列表 ===== */
+.issue{padding:13px 16px;border-radius:var(--r);margin-bottom:6px;display:flex;gap:12px;align-items:flex-start;font-size:var(--fs-sm);border:1px solid var(--border);background:var(--surface);border-left:2px solid transparent;transition:background var(--tr)}
+.issue:hover{background:var(--surface-hover)}
+.issue.i-p0{border-left-color:var(--err)}
+.issue.i-p1{border-left-color:var(--brand)}
+.issue.i-p2{border-left-color:var(--t-5)}
+.issue .ip{font-weight:700;min-width:28px;flex-shrink:0;font-size:var(--fs-xs)}
+.ip0{color:var(--err)}
+.ip1{color:var(--brand)}
+.ip2{color:var(--t-4)}
+.issue .it{color:var(--t-2);font-weight:500;line-height:1.5}
+.issue .ih{font-size:var(--fs-xs);color:var(--t-5);margin-top:4px;line-height:1.5}
+
+/* ===== Table ===== */
+.user-table-wrap{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.user-table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.user-table th{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);color:var(--t-5);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;background:rgba(0,0,0,0.15)}
+.user-table td{padding:12px 14px;border-bottom:1px solid var(--divider);color:var(--t-2)}
+.user-table tbody tr{cursor:pointer;transition:background .15s}
+.user-table tbody tr:hover td{background:var(--surface-hover)}
+.user-table tbody tr:last-child td{border-bottom:none}
+.status-tag{padding:3px 9px;border-radius:5px;font-size:var(--fs-xs);font-weight:500;white-space:nowrap;border:1px solid transparent}
+.st-done{background:rgba(16,185,129,0.1);color:var(--ok);border-color:rgba(16,185,129,0.15)}
+.st-progress{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-border)}
+.st-uploaded{background:rgba(129,140,248,0.1);color:var(--info);border-color:rgba(129,140,248,0.18)}
+.st-browsing{background:rgba(100,116,139,0.08);color:var(--t-4);border-color:var(--border)}
+
+/* ===== Empty / Loading ===== */
+.empty{text-align:center;padding:60px 20px;background:var(--surface);border:1px dashed var(--border);border-radius:var(--r-lg);color:var(--t-4);font-size:var(--fs-sm)}
+.empty-icon{width:44px;height:44px;margin:0 auto 14px;opacity:.3;display:block}
+.refresh-hint{font-size:var(--fs-xs);color:var(--t-6);text-align:center;margin-top:14px}
+.loading{text-align:center;padding:60px 20px}
+.loading-spinner{width:24px;height:24px;border:2.5px solid rgba(245,158,11,0.15);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== Modal ===== */
+.modal-bg{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(14px);display:none;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{width:92%;max-width:760px;max-height:86vh;background:var(--bg-2);border:1px solid var(--border-strong);border-radius:var(--r-xl);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,0.6);animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-head h3{font-size:var(--fs-md);font-weight:600;color:var(--t-1);display:flex;align-items:center}
+.modal-close{width:30px;height:30px;border-radius:var(--r-sm);border:none;background:var(--surface);color:var(--t-4);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--tr)}
+.modal-close:hover{background:var(--surface-hover);color:var(--t-1)}
+.modal-body{flex:1;overflow-y:auto;padding:20px 22px}
+
+/* ===== Timeline ===== */
+.timeline{display:flex;flex-direction:column;position:relative}
+.tl-item{display:flex;gap:12px;padding:6px 0;font-size:var(--fs-sm);position:relative}
+.tl-time{min-width:52px;color:var(--t-5);text-align:right;flex-shrink:0;font-family:'SF Mono',Monaco,monospace;font-size:var(--fs-xs);padding-top:2px}
+.tl-dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0}
+.tl-dot.d-page{background:var(--info)}
+.tl-dot.d-click{background:var(--ok)}
+.tl-dot.d-milestone{background:var(--brand)}
+.tl-dot.d-error{background:var(--err)}
+.tl-dot.d-frustration{background:var(--err)}
+.tl-dot.d-default{background:var(--t-6)}
+.tl-dot.d-survey{background:#06b6d4}
+.tl-line{position:absolute;left:73px;top:16px;bottom:-6px;width:1px;background:var(--divider)}
+.tl-item:last-child .tl-line{display:none}
+.tl-content{flex:1;color:var(--t-2);line-height:1.5}
+.tl-sub{color:var(--t-5);font-size:var(--fs-xs);margin-top:2px}
+
+/* =================================================================
+   Step 1: Config Panel — 每项配置都是独立可折叠卡片
+   ================================================================= */
+
+/* 配置区外包裹 */
+.cfg-group{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+
+/* 每项配置卡片 */
+.cfg-section{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    transition:border-color var(--tr),background var(--tr);
+}
+.cfg-section:hover{border-color:var(--border-strong)}
+.cfg-section.cfg-accordion.open{border-color:var(--border-strong);background:rgba(255,255,255,0.035)}
+
+/* 卡片头部（可点击折叠） */
+.cfg-accordion-header{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 18px;cursor:pointer;
+    transition:background var(--tr);user-select:none;
+}
+.cfg-accordion-header:hover{background:rgba(255,255,255,0.02)}
+.cfg-accordion-header>svg:first-child{color:var(--t-4);flex-shrink:0}
+.cfg-accordion.open>.cfg-accordion-header{background:rgba(255,255,255,0.025);border-bottom:1px solid var(--divider)}
+.cfg-accordion.open .cfg-chevron{transform:rotate(90deg);color:var(--brand)}
+.cfg-chevron{color:var(--t-5);flex-shrink:0;margin-left:auto;transition:transform .2s,color .2s}
+
+/* 卡片内容 */
+.cfg-accordion-body{display:none;padding:16px 18px}
+.cfg-accordion.open .cfg-accordion-body{display:block;animation:fadeUp .25s ease}
+
+/* 标题与提示 */
+.cfg-title{font-size:var(--fs-md);font-weight:600;color:var(--t-1);letter-spacing:-0.005em}
+.cfg-title-hint{font-size:var(--fs-xs);color:var(--t-5);font-weight:400;margin-left:4px}
+
+/* 开关项（用于"基础设置"卡片内部） */
+.cfg-toggle{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 0;border-bottom:1px solid var(--divider);
+    cursor:pointer;transition:background var(--tr);
+    font-size:var(--fs-sm);color:var(--t-2);
+}
+.cfg-toggle:last-child{border-bottom:none}
+.cfg-toggle svg{color:var(--t-4)}
+
+.cp-cb{width:14px;height:14px;accent-color:var(--brand);cursor:pointer;flex-shrink:0}
+
+/* ===== 情境微问卷网格 ===== */
+.sub-surveys-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sv-item{
+    background:rgba(0,0,0,0.15);border:1px solid var(--border);
+    border-radius:var(--r);padding:12px 14px;
+    transition:all var(--tr);
+}
+.sv-item:hover{background:rgba(0,0,0,0.25);border-color:var(--border-strong)}
+.sv-item-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sv-label{flex:1;font-size:var(--fs-sm);font-weight:600;color:var(--t-1);letter-spacing:-0.005em}
+.sv-trigger{
+    font-size:.6rem;padding:3px 8px;border-radius:5px;
+    background:var(--brand-soft);color:var(--brand);
+    white-space:nowrap;font-weight:500;
+    border:1px solid var(--brand-border);
+}
+.sv-item-detail{font-size:var(--fs-xs);color:var(--t-4);line-height:1.55}
+.sv-item-detail .sv-scale{display:block;margin-top:5px;color:var(--t-5);font-size:.62rem}
+
+/* ===== 总结问卷网格 ===== */
+.exit-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.ex-item{
+    background:rgba(0,0,0,0.15);border:1px solid var(--border);
+    border-radius:var(--r);padding:14px 12px;text-align:center;
+    transition:all var(--tr);
+}
+.ex-item:hover{background:rgba(0,0,0,0.25);border-color:var(--border-strong);transform:translateY(-1px)}
+.ex-tag{
+    display:inline-block;font-size:.58rem;font-weight:700;
+    padding:3px 8px;border-radius:5px;margin-bottom:8px;
+    letter-spacing:.05em;border:1px solid transparent;
+}
+.ex-tag.ex-purple{background:rgba(129,140,248,0.12);color:#a5b4fc;border-color:rgba(129,140,248,0.2)}
+.ex-tag.ex-amber{background:var(--brand-soft);color:var(--brand-2);border-color:var(--brand-border)}
+.ex-tag.ex-green{background:rgba(16,185,129,0.12);color:#34d399;border-color:rgba(16,185,129,0.2)}
+.ex-name{font-size:var(--fs-sm);font-weight:600;color:var(--t-1);margin-bottom:3px;letter-spacing:-0.005em}
+.ex-meta{font-size:var(--fs-xs);color:var(--t-5)}
+
+/* ===== 流程时间线（折叠卡片内部） ===== */
+.tl-strip{display:flex;flex-direction:column;font-size:var(--fs-xs);position:relative;padding-left:22px}
+.tl-strip::before{content:'';position:absolute;left:6px;top:10px;bottom:10px;width:1.5px;background:var(--divider);border-radius:1px}
+.tl-node{display:flex;align-items:center;gap:10px;padding:6px 0;position:relative}
+.tl-node::before{
+    content:'';position:absolute;left:-19px;top:50%;transform:translateY(-50%);
+    width:8px;height:8px;border-radius:50%;
+    box-shadow:0 0 0 3px var(--bg);
+}
+.tl-node.tn-purple::before{background:var(--info)}
+.tl-node.tn-indigo::before{background:#6366f1}
+.tl-node.tn-amber::before{background:var(--brand)}
+.tl-node.tn-green::before{background:var(--ok)}
+.tl-node-time{min-width:56px;color:var(--t-5);font-weight:500;font-family:'SF Mono',Monaco,monospace;font-size:.62rem}
+.tl-node-dot{display:none}
+.tl-node-label{color:var(--t-3);line-height:1.5}
+.tl-node-label.survey{color:var(--t-2)}
+.tl-node-label.survey strong{color:var(--brand-2);font-weight:600}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+    .page-header{flex-direction:column;align-items:flex-start}
+    .stepper{flex-direction:column;gap:4px;align-items:stretch;padding:6px}
+    .stp-line{width:1px;height:10px;margin:0 auto}
+    .kpi-row{grid-template-columns:repeat(3,1fr)}
+    .form-row{flex-direction:column;align-items:stretch}
+    .form-row label{min-width:auto}
+    .modal{width:97%;max-height:92vh}
+    .sub-surveys-grid{grid-template-columns:1fr}
+    .exit-detail-grid{grid-template-columns:repeat(2,1fr)}
+    .cfg-accordion-header{padding:12px 14px}
+    .cfg-accordion-body{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="wrap">
+
+<!-- Header -->
+<div class="page-header">
+    <div>
+        <h1>
+            <span class="h1-icon">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+                </svg>
+            </span>
+            用户测试中心
+        </h1>
+        <p class="subtitle">生成链接，分发测试，查看数据 — 两步搞定</p>
+    </div>
+    <a class="nav-btn" href="../hub.html">
+        <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        回到黄页
+    </a>
+</div>
+
+<!-- Stepper -->
+<div class="stepper" id="stepper">
+    <div class="stp s1 active" data-step="1" onclick="goStep(1)">
+        <div class="stp-num">1</div>
+        <div>
+            <div class="stp-label">生成链接</div>
+            <div class="stp-hint">专属链接或公共邀请</div>
+        </div>
+    </div>
+    <div class="stp-line" data-line="1"></div>
+    <div class="stp s2" data-step="2" onclick="goStep(2)">
+        <div class="stp-num">2</div>
+        <div>
+            <div class="stp-label">查看数据</div>
+            <div class="stp-hint">漏斗 · 问题 · 路径</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== STEP 1: 生成链接 ===== -->
+<div class="section visible" id="sec1">
+        <div class="form-row">
+            <label>轮次名称</label>
+            <input id="testName" value="round1" placeholder="如 round1、内测、0410">
+        </div>
+        <div class="form-row">
+            <label>测试版本</label>
+            <select id="testVersion">
+                <option value="html">Tideo · HTML 版（visual1）</option>
+                <option value="react">Tideo · React 版（react1）</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label>轮次类型</label>
+            <select id="testType">
+                <option value="internal">内部测试（3 个目标任务，逐步引导）</option>
+                <option value="user">真实用户（2 个目标任务，自由探索）</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label>用户数量</label>
+            <input id="userCount" type="number" value="5" min="1" max="30" style="max-width:90px">
+            <button class="btn btn-primary" onclick="generateLinks()">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                </svg>
+                生成专属链接
+            </button>
+            <button class="btn btn-ghost" onclick="generatePublicLink()">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 00-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                生成公共邀请链接
+            </button>
+        </div>
+
+        <!-- 测试配置 -->
+        <div class="cfg-group">
+
+        <div class="cfg-section cfg-accordion open">
+            <div class="cfg-accordion-header" onclick="toggleAccordion(this)">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9M3 20h1l10.5-10.5a1.5 1.5 0 00-3-3L1 17v3h3z"/>
+                </svg>
+                <span class="cfg-title">基础设置</span>
+                <span class="cfg-title-hint">欢迎引导 + 任务气泡</span>
+                <svg class="ic-16 cfg-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="cfg-accordion-body">
+                <label class="cfg-toggle">
+                    <input type="checkbox" id="cfgWelcome" checked>
+                    <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3"/>
+                    </svg>
+                    <span>欢迎引导页</span>
+                    <span style="font-size:var(--fs-xs);color:var(--t-5);margin-left:auto">任务说明 + 测试视频下载</span>
+                </label>
+                <label class="cfg-toggle">
+                    <input type="checkbox" id="cfgTasks" checked>
+                    <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                    </svg>
+                    <span>任务目标气泡</span>
+                    <span style="font-size:var(--fs-xs);color:var(--t-5);margin-left:auto">右下角浮动，逐步展示任务</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="cfg-section cfg-accordion">
+            <div class="cfg-accordion-header" onclick="toggleAccordion(this)">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                </svg>
+                <span class="cfg-title">情境微问卷</span>
+                <span class="cfg-title-hint">关键节点自动弹出 · 4 个节点</span>
+                <svg class="ic-16 cfg-chevron" style="margin-left:auto;transition:transform .2s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="cfg-accordion-body">
+                <div class="sub-surveys-grid">
+                    <div class="sv-item">
+                        <div class="sv-item-head">
+                            <input type="checkbox" class="sv-cp-chk cp-cb" data-cp="upload_ease" checked onclick="event.stopPropagation()">
+                            <span class="sv-label">上传完成后</span>
+                            <span class="sv-trigger">评分 · 1题</span>
+                        </div>
+                        <div class="sv-item-detail">「刚才找到上传入口顺利吗？」<span class="sv-scale">很困难 — 一下就找到了</span></div>
+                    </div>
+                    <div class="sv-item">
+                        <div class="sv-item-head">
+                            <input type="checkbox" class="sv-cp-chk cp-cb" data-cp="wait_sam" checked onclick="event.stopPropagation()">
+                            <span class="sv-label">AI 处理 30 秒时</span>
+                            <span class="sv-trigger">SAM · 2维度</span>
+                        </div>
+                        <div class="sv-item-detail">「等 AI 处理的这段时间感觉怎样？」<span class="sv-scale">紧张度 + 心情</span></div>
+                    </div>
+                    <div class="sv-item">
+                        <div class="sv-item-head">
+                            <input type="checkbox" class="sv-cp-chk cp-cb" data-cp="result_sam" checked onclick="event.stopPropagation()">
+                            <span class="sv-label">看到 AI 结果时</span>
+                            <span class="sv-trigger">SAM · 2维度</span>
+                        </div>
+                        <div class="sv-item-detail">「看到 AI 处理的结果，感觉如何？」<span class="sv-scale">满意程度 + 掌控感</span></div>
+                    </div>
+                    <div class="sv-item">
+                        <div class="sv-item-head">
+                            <input type="checkbox" class="sv-cp-chk cp-cb" data-cp="finetune_ease" checked onclick="event.stopPropagation()">
+                            <span class="sv-label">修改结果后</span>
+                            <span class="sv-trigger">评分 · 1题</span>
+                        </div>
+                        <div class="sv-item-detail">「刚才修改结果的操作顺利吗？」<span class="sv-scale">完全不会 — 很容易</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cfg-section cfg-accordion">
+            <div class="cfg-accordion-header" onclick="toggleAccordion(this)">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                </svg>
+                <span class="cfg-title">总结问卷</span>
+                <span class="cfg-title-hint">全部任务完成后弹出 · 4 类问卷</span>
+                <svg class="ic-16 cfg-chevron" style="margin-left:auto;transition:transform .2s" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="cfg-accordion-body">
+                <div class="exit-detail-grid">
+                    <div class="ex-item">
+                        <div class="ex-tag ex-purple">SUS</div>
+                        <div class="ex-name">系统可用性量表</div>
+                        <div class="ex-meta">10 题 · 5 点量表</div>
+                    </div>
+                    <div class="ex-item">
+                        <div class="ex-tag ex-amber">情绪</div>
+                        <div class="ex-name">情绪价值量表</div>
+                        <div class="ex-meta">9 题 · 5 点量表</div>
+                    </div>
+                    <div class="ex-item">
+                        <div class="ex-tag ex-green">NPS</div>
+                        <div class="ex-name">净推荐值</div>
+                        <div class="ex-meta">2 题</div>
+                    </div>
+                    <div class="ex-item">
+                        <div class="ex-tag" style="border-color:rgba(255,255,255,.12);color:#94a3b8">其他</div>
+                        <div class="ex-name">开放题</div>
+                        <div class="ex-meta">3 题</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 流程时间线 -->
+        <div class="cfg-section cfg-accordion">
+            <div class="cfg-accordion-header" onclick="toggleAccordion(this)">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+                <span class="cfg-title">流程 &amp; 触发时间线</span>
+                <span class="cfg-title-hint">用户体验路径 · 10 个节点</span>
+                <svg class="ic-16 cfg-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+            <div class="cfg-accordion-body">
+                <div class="tl-strip">
+                    <div class="tl-node tn-purple"><span class="tl-node-time">0s</span><span class="tl-node-dot" style="background:#818cf8"></span><span class="tl-node-label">打开链接 — 欢迎页（任务说明 + 下载测试视频）</span></div>
+                    <div class="tl-node tn-indigo"><span class="tl-node-time">—</span><span class="tl-node-dot" style="background:#6366f1"></span><span class="tl-node-label">操作中 — 找功能、上传视频、等待处理</span></div>
+                    <div class="tl-node tn-amber"><span class="tl-node-time">上传后</span><span class="tl-node-dot" style="background:#f59e0b"></span><span class="tl-node-label survey"><strong>弹出「上传容易度」评分</strong></span></div>
+                    <div class="tl-node tn-amber"><span class="tl-node-time">30s</span><span class="tl-node-dot" style="background:#f59e0b"></span><span class="tl-node-label survey"><strong>弹出 SAM 情绪量表（紧张度+心情）</strong></span></div>
+                    <div class="tl-node tn-amber"><span class="tl-node-time">结果</span><span class="tl-node-dot" style="background:#f59e0b"></span><span class="tl-node-label survey"><strong>弹出 SAM 情绪量表（满意度+掌控感）</strong></span></div>
+                    <div class="tl-node tn-indigo"><span class="tl-node-time">—</span><span class="tl-node-dot" style="background:#6366f1"></span><span class="tl-node-label">精调中 — 用户修改字幕/擦除区域</span></div>
+                    <div class="tl-node tn-amber"><span class="tl-node-time">精调后</span><span class="tl-node-dot" style="background:#f59e0b"></span><span class="tl-node-label survey"><strong>弹出「精调容易度」评分</strong></span></div>
+                    <div class="tl-node tn-indigo"><span class="tl-node-time">—</span><span class="tl-node-dot" style="background:#6366f1"></span><span class="tl-node-label">导出 — 用户下载成片</span></div>
+                    <div class="tl-node tn-green"><span class="tl-node-time">完成</span><span class="tl-node-dot" style="background:#10b981"></span><span class="tl-node-label survey"><strong>弹出总结问卷（SUS + 情绪 + NPS + 开放题）</strong></span></div>
+                    <div class="tl-node tn-green"><span class="tl-node-time">提交</span><span class="tl-node-dot" style="background:#10b981"></span><span class="tl-node-label">感谢页（展示 SUS 分数 + NPS）</span></div>
+                </div>
+            </div>
+        </div>
+
+        </div><!-- /.cfg-group -->
+
+        <div class="link-list" id="linkList"></div>
+        <div id="linkActions" style="display:none" class="link-actions">
+            <button class="btn btn-ghost btn-sm" onclick="copyAllLinks()">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+                一键复制全部
+            </button>
+            <button class="btn btn-amber btn-sm" onclick="goStep(2)">
+                查看数据
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+        <div class="howto" id="howtoBox" style="display:none">
+            <div class="howto-title">
+                <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+                使用方式
+            </div>
+            <p>专属链接适合提前分配测试者；公共邀请链接适合直接发到群里，打开者会自动生成独立 ID。<br>用户打开就是正常产品页，操作全程自动埋点（无感知）<br>测完后切到第二步查看数据</p>
+        </div>
+</div>
+
+<!-- ===== STEP 2: 查看数据 ===== -->
+<div class="section" id="sec2">
+    <div class="toolbar">
+        <select id="fTest"><option value="">全部轮次</option></select>
+        <button class="btn btn-amber btn-sm" onclick="loadData()">
+            <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            刷新数据
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">
+            <svg class="ic-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            导出 CSV
+        </button>
+        <div class="toolbar-right">
+            <span class="auto-badge">30秒自动刷新</span>
+            <span class="update-time" id="updateTime"></span>
+        </div>
+    </div>
+    <div id="dashboard">
+        <div class="empty">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+            点击「刷新数据」加载结果
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-head">
+            <h3 id="modalTitle">
+                <svg class="ic-16" style="color:#64748b;margin-right:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                用户操作详情
+            </h3>
+            <button class="modal-close" onclick="closeModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script src="deploy-config.js"></script>
+<script>
+const SCF = 'https://1306264703-4mtd7pg0gt.ap-guangzhou.tencentscf.com';
+const API_DISABLED = false;
+let ALL = [];
+let currentStep = 1;
+let generatedLinks = [];
+
+function showToast(msg, type='success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2800);
+}
+
+// ===== Stepper =====
+function goStep(n) {
+    currentStep = n;
+    document.querySelectorAll('.stp').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.toggle('active', s === n);
+        if (s < n) el.classList.add('done'); else el.classList.remove('done');
+    });
+    document.querySelectorAll('.stp-line').forEach(el => {
+        el.classList.toggle('done', parseInt(el.dataset.line) < n);
+    });
+    document.querySelectorAll('.section').forEach(el => el.classList.remove('visible'));
+    const sec = document.getElementById('sec' + n);
+    if (sec) sec.classList.add('visible');
+    if (n === 2 && !ALL.length) loadData();
+}
+
+// ===== Accordion toggle =====
+function toggleAccordion(header) {
+    const section = header.parentElement;
+    const isOpen = section.classList.contains('open');
+    section.classList.toggle('open', !isOpen);
+}
+
+// ===== Step 1: Generate =====
+function getCurrentLinkConfig() {
+    const test = document.getElementById('testName').value.trim() || 'round1';
+    const version = document.getElementById('testVersion').value;
+    const root = new URL('..', location.href).href.replace(/\/$/, '');
+    const versionUrls = {
+        html: root + '/tideo-html/create.html',
+        react: root + '/tideo-react/dist/'
+    };
+    const enabledCPs = [];
+    document.querySelectorAll('.sv-cp-chk:checked').forEach(c => enabledCPs.push(c.dataset.cp));
+    return {
+        test,
+        base: versionUrls[version] || versionUrls.html,
+        testType: document.getElementById('testType').value,
+        cfgTasks: document.getElementById('cfgTasks').checked ? '1' : '0',
+        cfgWelcome: document.getElementById('cfgWelcome').checked ? '1' : '0',
+        cfgSurveys: enabledCPs.length > 0 ? '1' : '0',
+        cfgExit: '1',
+        cpStr: enabledCPs.join(',')
+    };
+}
+
+function buildTestUrl(cfg, uid, isPublicInvite) {
+    const url = new URL(cfg.base);
+    url.searchParams.set('test', cfg.test);
+    url.searchParams.set('smode', 'test');
+    if (uid) url.searchParams.set('uid', uid);
+    if (isPublicInvite) url.searchParams.set('invite', '1');
+    url.searchParams.set('stype', cfg.testType);
+    url.searchParams.set('stasks', cfg.cfgTasks);
+    url.searchParams.set('ssurveys', cfg.cfgSurveys);
+    url.searchParams.set('sexit', cfg.cfgExit);
+    url.searchParams.set('swelcome', cfg.cfgWelcome);
+    if (cfg.cpStr) url.searchParams.set('scp', cfg.cpStr);
+    return url.toString();
+}
+
+function renderGeneratedLinks(items, toastText) {
+    const list = document.getElementById('linkList');
+    generatedLinks = items;
+    list.innerHTML = items.map(item => '<div class="link-item">' +
+        '<span class="link-uid">' + item.uid + '</span>' +
+        '<span class="link-url">' + item.url + '</span>' +
+        '<button class="link-copy" data-url="' + item.url.replace(/"/g, '&quot;') + '" onclick="event.stopPropagation();copyUrl(this)">复制</button>' +
+        '</div>').join('');
+    document.getElementById('linkActions').style.display = '';
+    document.getElementById('howtoBox').style.display = '';
+    showToast(toastText);
+}
+
+function generateLinks() {
+    const cfg = getCurrentLinkConfig();
+    const count = Math.min(30, Math.max(1, parseInt(document.getElementById('userCount').value) || 5));
+    const items = [];
+    for (let i = 1; i <= count; i++) {
+        const uid = 'tester_' + String(i).padStart(2, '0');
+        items.push({ uid, url: buildTestUrl(cfg, uid, false) });
+    }
+    renderGeneratedLinks(items, '已生成 ' + count + ' 个专属测试链接');
+}
+
+function generatePublicLink() {
+    const cfg = getCurrentLinkConfig();
+    renderGeneratedLinks([
+        { uid: '公共邀请', url: buildTestUrl(cfg, '', true) }
+    ], '已生成公共邀请链接，打开者会自动生成独立 ID');
+}
+
+function copyUrl(btn) {
+    doCopy(btn.getAttribute('data-url')).then(ok => {
+        if (ok) { btn.textContent = '已复制'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000); }
+        else showToast('复制失败，请手动复制', 'error');
+    });
+}
+function copyAllLinks() {
+    if (!generatedLinks.length) return;
+    doCopy(generatedLinks.map(l => l.uid + '  ' + l.url).join('\n')).then(ok => {
+        if (ok) showToast('已复制全部 ' + generatedLinks.length + ' 个链接');
+        else showToast('复制失败', 'error');
+    });
+}
+async function doCopy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        try { await navigator.clipboard.writeText(text); return true; } catch(e) {}
+    }
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+        document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+    } catch(e) { return false; }
+}
+
+// ===== Step 2: Data =====
+async function loadData() {
+    const dash = document.getElementById('dashboard');
+    dash.innerHTML = '<div class="loading"><div class="loading-spinner"></div>加载中...</div>';
+    try {
+        const r = await fetch(API_DISABLED ? 'about:blank' : SCF + '/track-data');
+        const j = await r.json();
+        if (j.ok) {
+            ALL = j.data.events || [];
+            document.getElementById('updateTime').textContent = '更新于 ' + new Date().toLocaleTimeString();
+            const tests = [...new Set(ALL.map(e => e.test))].filter(Boolean);
+            const sel = document.getElementById('fTest');
+            const v = sel.value;
+            sel.innerHTML = '<option value="">全部轮次</option>' + tests.map(t => '<option value="'+t+'">'+t+'</option>').join('');
+            sel.value = v;
+            renderDashboard();
+        } else {
+            dash.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg><div style="margin-top:8px">加载失败：' + (j.error||'') + '</div></div>';
+        }
+    } catch(e) {
+        dash.innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg><div style="margin-top:8px">网络错误：' + e.message + '</div></div>';
+    }
+}
+
+function getEvents() {
+    const t = document.getElementById('fTest').value;
+    return t ? ALL.filter(e => e.test === t) : ALL;
+}
+document.getElementById('fTest').addEventListener('change', renderDashboard);
+
+function fmtDur(sec) { sec = Math.round(sec||0); return sec >= 60 ? Math.floor(sec/60)+'m'+(sec%60)+'s' : sec+'s'; }
+
+// SVG icon helper
+const icons = {
+    funnel: '<svg class="ic-16" style="color:#64748b" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2V12.46z"/></svg>',
+    warn: '<svg class="ic-16" style="color:#64748b" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    chart: '<svg class="ic-16" style="color:#64748b" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>',
+    task: '<svg class="ic-16" style="color:#64748b" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>',
+    users: '<svg class="ic-16" style="color:#64748b" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+    check: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    dash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>'
+};
+
+function renderDashboard() {
+    const events = getEvents();
+    if (!events.length) {
+        document.getElementById('dashboard').innerHTML = '<div class="empty"><svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><div>暂无数据<br><span style="font-size:.7rem;color:#1e293b">用户还没开始测试，或数据还没回传</span></div></div>';
+        return;
+    }
+
+    const uids = [...new Set(events.map(e => e.uid))].filter(u => !u.startsWith('anon_') && u !== 'test_verify');
+    const totalUsers = uids.length;
+
+    const userStats = uids.map(uid => {
+        const ue = events.filter(e => e.uid === uid).sort((a,b) => (a.seq||0)-(b.seq||0));
+        const hasUpload = ue.some(e => e.type === 'upload_done');
+        const hasMps = ue.some(e => e.type === 'mps_status');
+        const hasComplete = ue.some(e => e.type === 'milestone' && (e.d.name||'').includes('mps_complete'));
+        const hasExport = ue.some(e => e.type === 'click' && e.d.action === 'export');
+        const leave = ue.filter(e => e.type === 'leave');
+        const duration = leave.length ? Math.max(...leave.map(e => e.d.duration||0)) : (ue.length ? ue[ue.length-1].elapsed||0 : 0);
+        const hes = ue.find(e => e.type === 'first_interact');
+        const hesitation = hes ? hes.d.hesitation : -1;
+        const frustrations = ue.filter(e => e.type === 'frustration').length;
+        const status = hasComplete ? 'done' : (hasMps ? 'processing' : (hasUpload ? 'uploaded' : 'browsing'));
+        const exitSubmit = ue.find(e => e.type === 'survey_exit_submit');
+        const susScore = exitSubmit && exitSubmit.d ? exitSubmit.d.susScore : null;
+        const nps = exitSubmit && exitSubmit.d ? exitSubmit.d.nps : null;
+        const taskCompletes = ue.filter(e => e.type === 'task_complete');
+        return { uid, ue, hasUpload, hasMps, hasComplete, hasExport, duration, hesitation, frustrations, status, susScore, nps, taskCompletes, exitSubmit };
+    });
+
+    const completed = userStats.filter(u => u.hasComplete).length;
+    const uploaded = userStats.filter(u => u.hasUpload).length;
+    const avgHes = userStats.filter(u=>u.hesitation>=0);
+    const avgHesVal = avgHes.length ? (avgHes.reduce((s,u)=>s+u.hesitation,0)/avgHes.length).toFixed(0) : '-';
+    const totalFrustrations = userStats.reduce((s,u) => s + u.frustrations, 0);
+    const completePct = totalUsers ? Math.round(completed/totalUsers*100) : 0;
+    const susUsers = userStats.filter(u => u.susScore !== null);
+    const avgSUS = susUsers.length ? (susUsers.reduce((s,u) => s + u.susScore, 0) / susUsers.length).toFixed(1) : '-';
+    const npsUsers = userStats.filter(u => u.nps !== null);
+    const avgNPS = npsUsers.length ? (npsUsers.reduce((s,u) => s + u.nps, 0) / npsUsers.length).toFixed(1) : '-';
+
+    const funnelData = [
+        { label:'打开页面', count:totalUsers, color:'#818cf8' },
+        { label:'首次交互', count:userStats.filter(u=>u.hesitation>=0).length, color:'#818cf8' },
+        { label:'上传视频', count:uploaded, color:'#6366f1' },
+        { label:'开始处理', count:userStats.filter(u=>u.hasMps).length, color:'#6366f1' },
+        { label:'处理完成', count:completed, color:'#10b981' },
+        { label:'下载成片', count:userStats.filter(u=>u.hasExport).length, color:'#10b981' }
+    ];
+
+    const issues = [];
+    if (totalUsers > 0 && completePct < 50) issues.push({p:0,text:'全流程完成率仅 '+completePct+'%（'+completed+'/'+totalUsers+'人）',hint:'看下方用户列表，找出在哪一步流失'});
+    const uploadFails = events.filter(e=>e.type==='upload_fail').length;
+    if (uploadFails > 0) issues.push({p:0,text:uploadFails+' 次上传失败',hint:'检查视频格式、文件大小或网络'});
+    if (parseFloat(avgHesVal) > 15) issues.push({p:1,text:'平均犹豫 '+avgHesVal+'s，偏长',hint:'首页引导不够清晰'});
+    if (totalFrustrations > 0) issues.push({p:1,text:totalFrustrations+' 次困惑操作',hint:'反复点同一按钮，交互不符预期'});
+    const jsErrors = events.filter(e=>e.type==='error').length;
+    if (jsErrors > 0) issues.push({p:1,text:jsErrors+' 个 JS 错误',hint:'影响体验，需修复'});
+    const tabAways = events.filter(e=>e.type==='tab_away').length;
+    if (tabAways > 2) issues.push({p:2,text:tabAways+' 次切走页面',hint:'用户等不住，考虑展示预估时间'});
+    if (susUsers.length > 0 && parseFloat(avgSUS) < 68) issues.push({p:0,text:'SUS 均分 '+avgSUS+'（<68 低于可接受标准）',hint:'重点关注复杂度和学习成本'});
+    if (npsUsers.length > 0 && parseFloat(avgNPS) < 7) issues.push({p:1,text:'NPS 均分 '+avgNPS+'（<7 被动者/贬损者偏多）',hint:'优化核心价值感知'});
+
+    let html = '';
+
+    // KPI — 6 col
+    html += '<div class="kpi-row">';
+    html += '<div class="kpi neutral"><div class="kv">'+totalUsers+'</div><div class="kl">测试用户</div></div>';
+    html += '<div class="kpi '+(completePct>=70?'green':completePct>=40?'yellow':'red')+'"><div class="kv">'+completePct+'%</div><div class="kl">完成率</div></div>';
+    html += '<div class="kpi '+(parseFloat(avgHesVal)>15?'yellow':'neutral')+'"><div class="kv">'+avgHesVal+'<span style="font-size:.65rem;font-weight:400">s</span></div><div class="kl">平均犹豫</div></div>';
+    html += '<div class="kpi '+(totalFrustrations>0?'yellow':'neutral')+'"><div class="kv">'+totalFrustrations+'</div><div class="kl">困惑操作</div></div>';
+    const susColor = avgSUS==='-' ? 'neutral' : (parseFloat(avgSUS)>=68?'green':'red');
+    html += '<div class="kpi '+susColor+'"><div class="kv">'+avgSUS+'</div><div class="kl">SUS 均分</div></div>';
+    const npsColor = avgNPS==='-' ? 'neutral' : (parseFloat(avgNPS)>=9?'green':parseFloat(avgNPS)>=7?'yellow':'red');
+    html += '<div class="kpi '+npsColor+'"><div class="kv">'+avgNPS+'</div><div class="kl">NPS 均分</div></div>';
+    html += '</div>';
+
+    // Funnel
+    html += '<div class="card"><div class="card-title">'+icons.funnel+' 转化漏斗</div><div class="funnel">';
+    funnelData.forEach((f,i) => {
+        const pct = i===0 ? 100 : (funnelData[0].count ? Math.round(f.count/funnelData[0].count*100) : 0);
+        html += '<div class="funnel-step" style="background:'+f.color+'12"><div class="fs-val" style="color:'+f.color+'">'+f.count+'</div><div class="fs-label">'+f.label+'</div>'+(i>0?'<div class="fs-pct">'+pct+'%</div>':'')+'<div class="fs-bar"><div class="fs-bar-fill" style="width:'+pct+'%;background:'+f.color+'"></div></div></div>';
+    });
+    html += '</div></div>';
+
+    // Issues
+    if (issues.length) {
+        html += '<div class="card"><div class="card-title">'+icons.warn+' 发现的问题</div>';
+        issues.sort((a,b)=>a.p-b.p).forEach(i => {
+            html += '<div class="issue i-p'+i.p+'"><span class="ip ip'+i.p+'">P'+i.p+'</span><div><div class="it">'+i.text+'</div><div class="ih">'+i.hint+'</div></div></div>';
+        });
+        html += '</div>';
+    }
+
+    // Survey summary
+    if (susUsers.length || npsUsers.length) {
+        html += '<div class="card"><div class="card-title">'+icons.chart+' 问卷汇总（' + Math.max(susUsers.length, npsUsers.length) + '人已填）</div>';
+        if (susUsers.length) {
+            html += '<div style="margin-bottom:16px"><div class="card-label">SUS 可用性分数分布</div>';
+            html += '<div style="display:flex;gap:4px;align-items:flex-end;height:60px">';
+            const susBins = [0,0,0,0,0];
+            susUsers.forEach(u => {
+                const s = u.susScore;
+                if (s < 40) susBins[0]++;
+                else if (s < 60) susBins[1]++;
+                else if (s < 68) susBins[2]++;
+                else if (s < 80) susBins[3]++;
+                else susBins[4]++;
+            });
+            const maxBin = Math.max(...susBins, 1);
+            const binLabels = ['<40 不可接受','40-60 差','60-68 边缘','68-80 好','80+ 优秀'];
+            const binColors = ['#ef4444','#f59e0b','#eab308','#10b981','#818cf8'];
+            susBins.forEach((c, i) => {
+                const h = Math.max(4, Math.round(c / maxBin * 50));
+                html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">' +
+                    '<div style="font-size:.6rem;color:'+binColors[i]+';font-weight:700">'+(c||'')+'</div>' +
+                    '<div style="width:100%;height:'+h+'px;background:'+binColors[i]+'18;border:1px solid '+binColors[i]+'35;border-radius:4px"></div>' +
+                    '<div style="font-size:.48rem;color:#334155;text-align:center;line-height:1.3">'+binLabels[i]+'</div></div>';
+            });
+            html += '</div></div>';
+        }
+        if (npsUsers.length) {
+            const promoters = npsUsers.filter(u => u.nps >= 9).length;
+            const passives = npsUsers.filter(u => u.nps >= 7 && u.nps <= 8).length;
+            const detractors = npsUsers.filter(u => u.nps <= 6).length;
+            const npsScore = Math.round((promoters - detractors) / npsUsers.length * 100);
+            html += '<div style="margin-bottom:16px"><div class="card-label">NPS 净推荐值: <span style="color:'+(npsScore>=0?'#10b981':'#ef4444')+';font-size:1rem;font-weight:800">'+npsScore+'</span></div>';
+            html += '<div style="display:flex;gap:8px">';
+            html += '<div style="flex:1;padding:10px;border-radius:10px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.12);text-align:center"><div style="font-size:1.1rem;font-weight:800;color:#10b981">'+promoters+'</div><div style="font-size:.6rem;color:#64748b">推荐者(9-10)</div></div>';
+            html += '<div style="flex:1;padding:10px;border-radius:10px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.12);text-align:center"><div style="font-size:1.1rem;font-weight:800;color:#f59e0b">'+passives+'</div><div style="font-size:.6rem;color:#64748b">被动者(7-8)</div></div>';
+            html += '<div style="flex:1;padding:10px;border-radius:10px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.12);text-align:center"><div style="font-size:1.1rem;font-weight:800;color:#ef4444">'+detractors+'</div><div style="font-size:.6rem;color:#64748b">贬损者(0-6)</div></div>';
+            html += '</div></div>';
+        }
+        const cpAnswers = events.filter(e => e.type === 'survey_answer' && e.d && e.d.rating);
+        if (cpAnswers.length) {
+            const cpMap = {};
+            cpAnswers.forEach(e => {
+                const cp = e.d.checkpoint || 'unknown';
+                if (!cpMap[cp]) cpMap[cp] = [];
+                cpMap[cp].push(e.d.rating);
+            });
+            html += '<div style="margin-bottom:16px"><div class="card-label">情境微问卷评分均值</div>';
+            const cpNames = {upload_ease:'上传容易度',finetune_ease:'精调容易度',result_quality:'成片质量',result_sam:'结果感受'};
+            Object.keys(cpMap).forEach(cp => {
+                const avg = (cpMap[cp].reduce((a,b)=>a+b,0)/cpMap[cp].length).toFixed(1);
+                const pct = Math.round(parseFloat(avg) / 5 * 100);
+                const color = parseFloat(avg) >= 4 ? '#10b981' : parseFloat(avg) >= 3 ? '#f59e0b' : '#ef4444';
+                html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:.7rem;color:#64748b;min-width:80px">'+(cpNames[cp]||cp)+'</span><div style="flex:1;height:6px;background:rgba(255,255,255,.04);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:3px"></div></div><span style="font-size:.75rem;font-weight:700;color:'+color+';min-width:28px;text-align:right">'+avg+'</span></div>';
+            });
+            html += '</div>';
+        }
+        const wordEvents = events.filter(e => e.type === 'survey_exit_submit' && e.d && e.d.words);
+        if (wordEvents.length) {
+            const allWords = [];
+            wordEvents.forEach(e => (e.d.words||[]).forEach(w => { if(w.trim()) allWords.push(w.trim()) }));
+            if (allWords.length) {
+                const wc = {};
+                allWords.forEach(w => { wc[w] = (wc[w]||0) + 1 });
+                const sorted = Object.entries(wc).sort((a,b)=>b[1]-a[1]).slice(0,12);
+                html += '<div><div class="card-label">三词描述聚合</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+                sorted.forEach(([w,c]) => {
+                    html += '<span style="padding:4px 10px;border-radius:8px;background:rgba(129,140,248,.07);border:1px solid rgba(129,140,248,.14);font-size:.72rem;color:#a5b4fc;font-weight:500">'+w+(c>1?' <span style="color:#818cf8;font-weight:700">x'+c+'</span>':'')+'</span>';
+                });
+                html += '</div></div>';
+            }
+        }
+        html += '</div>';
+    }
+
+    // Task completion matrix
+    const taskEvents = events.filter(e => e.type === 'task_complete');
+    if (taskEvents.length) {
+        const taskIds = [...new Set(taskEvents.map(e => e.d.taskId))].sort();
+        html += '<div class="card"><div class="card-title">'+icons.task+' 任务完成矩阵</div>';
+        html += '<div class="user-table-wrap"><table class="user-table"><thead><tr><th>用户</th>';
+        taskIds.forEach(t => { html += '<th style="text-align:center">'+t+'</th>'; });
+        html += '<th style="text-align:center">完成数</th></tr></thead><tbody>';
+        userStats.forEach(u => {
+            const doneIds = u.taskCompletes.map(e => e.d.taskId);
+            const count = new Set(doneIds).size;
+            html += '<tr><td><strong style="color:#f59e0b">'+u.uid+'</strong></td>';
+            taskIds.forEach(t => {
+                const done = doneIds.includes(t);
+                html += '<td style="text-align:center">' + (done ? '<span style="color:#10b981;font-weight:700">'+icons.check+'</span>' : '<span style="color:#1e293b">'+icons.dash+'</span>') + '</td>';
+            });
+            html += '<td style="text-align:center;font-weight:700;color:'+(count===taskIds.length?'#10b981':'#f59e0b')+'">'+count+'/'+taskIds.length+'</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+    }
+
+    // User table
+    html += '<div class="card"><div class="card-title">'+icons.users+' 用户详情（'+totalUsers+'人）</div>';
+    html += '<div class="user-table-wrap"><table class="user-table"><thead><tr><th>用户</th><th>状态</th><th>SUS</th><th>NPS</th><th>犹豫</th><th>停留</th><th>困惑</th><th></th></tr></thead><tbody>';
+    userStats.forEach(u => {
+        const m = {done:['完成','st-done'],processing:['处理中','st-progress'],uploaded:['已上传','st-uploaded'],browsing:['浏览中','st-browsing']};
+        const [st,sc] = m[u.status]||['未知','st-browsing'];
+        html += '<tr onclick="showUserDetail(\''+u.uid+'\')">' +
+            '<td><strong style="color:#f59e0b">'+u.uid+'</strong></td>' +
+            '<td><span class="status-tag '+sc+'">'+st+'</span></td>' +
+            '<td style="font-weight:700;color:'+(u.susScore!==null?(u.susScore>=68?'#10b981':'#ef4444'):'#334155')+'">'+(u.susScore!==null?u.susScore.toFixed(0):'-')+'</td>' +
+            '<td style="font-weight:700;color:'+(u.nps!==null?(u.nps>=9?'#10b981':u.nps>=7?'#f59e0b':'#ef4444'):'#334155')+'">'+(u.nps!==null?u.nps:'-')+'</td>' +
+            '<td>'+(u.hesitation>=0?u.hesitation+'s':'<span style="color:#1e293b">-</span>')+'</td>' +
+            '<td>'+fmtDur(u.duration)+'</td>' +
+            '<td>'+(u.frustrations>0?'<span style="color:#ef4444;font-weight:700">'+u.frustrations+'</span>':'<span style="color:#1e293b">-</span>')+'</td>' +
+            '<td style="font-size:.7rem;color:#475569">详情</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+    html += '<p class="refresh-hint">数据存储在腾讯云 COS &middot; 每 30 秒自动刷新</p>';
+
+    document.getElementById('dashboard').innerHTML = html;
+}
+
+// User detail
+function showUserDetail(uid) {
+    const events = getEvents().filter(e => e.uid === uid).sort((a,b) => (a.seq||0)-(b.seq||0));
+    if (!events.length) return;
+    const exitData = events.find(e => e.type === 'survey_exit_submit');
+    const dotMap = {enter:'d-page',click:'d-click',milestone:'d-milestone',error:'d-error',frustration:'d-error',leave:'d-page',upload_done:'d-milestone',upload_fail:'d-error',mps_status:'d-milestone',first_interact:'d-click',phase_start:'d-milestone',task_complete:'d-milestone',survey_answer:'d-survey',survey_skip:'d-default',survey_exit_submit:'d-milestone',survey_show:'d-default',survey_welcome_show:'d-default',survey_welcome_done:'d-default',survey_exit_show:'d-default'};
+
+    let html = '<div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">';
+    if (exitData && exitData.d) {
+        if (exitData.d.susScore != null) {
+            const sc = exitData.d.susScore;
+            html += '<div style="padding:10px 16px;border-radius:10px;background:rgba('+(sc>=68?'16,185,129':'239,68,68')+',.06);border:1px solid rgba('+(sc>=68?'16,185,129':'239,68,68')+',.15);text-align:center"><div style="font-size:1.2rem;font-weight:800;color:'+(sc>=68?'#10b981':'#ef4444')+'">'+sc.toFixed(0)+'</div><div style="font-size:.6rem;color:#64748b">SUS</div></div>';
+        }
+        if (exitData.d.nps != null) {
+            const n = exitData.d.nps;
+            html += '<div style="padding:10px 16px;border-radius:10px;background:rgba('+(n>=9?'16,185,129':n>=7?'245,158,11':'239,68,68')+',.06);border:1px solid rgba('+(n>=9?'16,185,129':n>=7?'245,158,11':'239,68,68')+',.15);text-align:center"><div style="font-size:1.2rem;font-weight:800;color:'+(n>=9?'#10b981':n>=7?'#f59e0b':'#ef4444')+'">'+n+'</div><div style="font-size:.6rem;color:#64748b">NPS</div></div>';
+        }
+        if (exitData.d.words && exitData.d.words.length) {
+            html += '<div style="padding:8px 14px;border-radius:10px;background:rgba(129,140,248,.06);border:1px solid rgba(129,140,248,.14);display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+            exitData.d.words.forEach(w => { html += '<span style="padding:2px 8px;border-radius:6px;background:rgba(129,140,248,.12);color:#a5b4fc;font-size:.72rem;font-weight:500">'+w+'</span>'; });
+            html += '</div>';
+        }
+    }
+    html += '</div>';
+
+    html += '<div class="timeline">';
+    events.forEach(e => {
+        const elapsed = typeof e.elapsed==='number' ? fmtDur(e.elapsed) : '-';
+        let content='', sub='';
+        switch(e.type) {
+            case 'enter': content='进入 <strong style="color:#e2e8f0">'+e.page+'</strong>'; break;
+            case 'leave': content='离开页面'; sub='停留 '+fmtDur(e.d.duration)+'，滚动 '+(e.d.scrollDepth||0)+'%'; break;
+            case 'first_interact': content='首次交互 — '+(e.d.how||''); sub='犹豫 '+(e.d.hesitation||0)+'s'; break;
+            case 'click': content='点击 '+(e.d.action?'<strong style="color:#e2e8f0">'+e.d.action+'</strong> ':'')+(e.d.text?'"'+e.d.text.slice(0,30)+'"':''); break;
+            case 'file_select': content='选择文件 <strong style="color:#e2e8f0">所有'+(e.d.name||'')+'</strong>'; sub=(e.d.sizeMB||'')+' MB'; break;
+            case 'upload_done': content='<span style="color:#10b981">'+icons.check+'</span> 上传成功'; sub=(e.d.sizeMB||'')+' MB'; break;
+            case 'upload_fail': content='<span style="color:#ef4444">x</span> 上传失败'; sub=e.d.error||''; break;
+            case 'milestone': content='<span style="color:#f59e0b">&#9733;</span> '+(e.d.name||''); break;
+            case 'mps_status': content='MPS: '+(e.d.status||''); sub='耗时 '+fmtDur(e.d.elapsed); break;
+            case 'phase_start': content='阶段: '+(e.d.phase||''); break;
+            case 'frustration': content='<span style="color:#ef4444">!</span> 反复点击 '+(e.d.target||''); sub=(e.d.repeats||0)+'次'; break;
+            case 'error': content='<span style="color:#ef4444">x</span> '+((e.d.msg||'').slice(0,60)); break;
+            case 'tab_away': content='切走页面'; break;
+            case 'tab_back': content='切回页面'; break;
+            case 'task_complete': content='<span style="color:#10b981">'+icons.check+'</span> 任务完成 <strong style="color:#e2e8f0">所有'+(e.d.taskId||'')+'</strong>'; sub=e.d.label||''; break;
+            case 'survey_show': content='<span style="color:#06b6d4">?</span> 弹出问卷 <strong style="color:#e2e8f0">所有'+(e.d.checkpoint||'')+'</strong>'; break;
+            case 'survey_answer':
+                content='<span style="color:#06b6d4">?</span> 问卷回答 <strong style="color:#e2e8f0">所有'+(e.d.checkpoint||'')+'</strong>';
+                if(e.d.rating) sub='评分: '+'★'.repeat(e.d.rating)+'☆'.repeat(5-e.d.rating)+(e.d.comment?' "'+e.d.comment.slice(0,40)+'"':'');
+                if(e.d.sam){const parts=[];Object.entries(e.d.sam).forEach(([k,v])=>{parts.push(k+':'+v+'/9')});sub=parts.join(' · ')}
+                break;
+            case 'survey_skip': content='<span style="color:#475569">-</span> 跳过问卷 '+(e.d.checkpoint||''); break;
+            case 'survey_exit_submit': content='<span style="color:#818cf8">&#9744;</span> <strong style="color:#e2e8f0">提交总结问卷</strong>'; sub='SUS '+(e.d.susScore?e.d.susScore.toFixed(0):'-')+' / NPS '+(e.d.nps!=null?e.d.nps:'-'); break;
+            case 'survey_welcome_show': content='<span style="color:#818cf8">&#9744;</span> 欢迎页展示'; break;
+            case 'survey_welcome_done': content='<span style="color:#10b981">'+icons.check+'</span> 欢迎页确认，开始测试'; break;
+            case 'survey_exit_show': content='<span style="color:#818cf8">&#9744;</span> 总结问卷展示'; break;
+            default: content=e.type; sub=JSON.stringify(e.d||{}).slice(0,60);
+        }
+        html += '<div class="tl-item"><div class="tl-line"></div><span class="tl-time">'+elapsed+'</span><span class="tl-dot '+(dotMap[e.type]||'d-default')+'"></span><div><div class="tl-content">'+content+'</div>'+(sub?'<div class="tl-sub">'+sub+'</div>':'')+'</div></div>';
+    });
+    html += '</div>';
+
+    if (exitData && exitData.d && (exitData.d.open1 || exitData.d.open2)) {
+        html += '<div style="margin-top:16px;padding:14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05)">';
+        html += '<div style="font-size:.78rem;font-weight:700;color:#e2e8f0;margin-bottom:10px">开放题反馈</div>';
+        if (exitData.d.open1) html += '<div style="font-size:.72rem;color:#475569;margin-bottom:4px">最困惑的地方：</div><div style="font-size:.76rem;color:#94a3b8;margin-bottom:10px;line-height:1.5">'+exitData.d.open1+'</div>';
+        if (exitData.d.open2) html += '<div style="font-size:.72rem;color:#475569;margin-bottom:4px">最有价值的功能：</div><div style="font-size:.76rem;color:#94a3b8;line-height:1.5">'+exitData.d.open2+'</div>';
+        html += '</div>';
+    }
+
+    document.getElementById('modalTitle').innerHTML = '<svg class="ic-16" style="color:#64748b;margin-right:6px;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' + uid + ' 的操作路径';
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('modalBg').classList.add('show');
+}
+
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+function exportCSV() {
+    if(!ALL.length){ showToast('暂无数据','error'); return; }
+    const h=['timestamp','uid','test','page','seq','type','elapsed','detail'];
+    const rows=ALL.map(e=>[e.ts,e.uid,e.test,e.page,e.seq,e.type,e.elapsed,JSON.stringify(e.d)].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+    const csv=[h.join(','),...rows].join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));a.download='tideo_test_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+    showToast('CSV 已导出');
+}
+
+goStep(1);
+setInterval(() => { if(ALL.length) loadData(); }, 30000);
+</script>
+</body>
+</html>

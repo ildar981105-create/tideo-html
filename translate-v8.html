@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo · 影视译制工作坊</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--text4:#475569;--accent:#818cf8;--border:rgba(255,255,255,0.06);--glass:rgba(255,255,255,0.82);--glass-border:rgba(255,255,255,0.5);--glass-text:#1e293b;--glass-text2:#475569;--glass-text3:#64748b;--r:16px;--rs:10px;--tr:0.3s cubic-bezier(0.4,0,0.2,1)}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text)}
+button{cursor:pointer;font-family:inherit}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+
+/* === 全屏背景 === */
+.v8-page{position:relative;width:100%;height:100vh;overflow:hidden}
+.v8-bg{position:absolute;inset:0;z-index:0;overflow:hidden;transition:opacity 0.8s,filter 0.8s}
+.v8-bg video{width:100%;height:100%;object-fit:cover}
+.v8-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.5) 100%);pointer-events:none}
+.v8-page.ft-mode .v8-bg{opacity:0;filter:blur(20px)}
+.v8-page.lights-off .v8-bg{opacity:0}
+
+/* 背景同步层 — 和 background-size:cover 完全相同的缩放逻辑 */
+.v8-bg-sync{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none}
+.v8-bg-sync-inner{position:absolute;aspect-ratio:1920/1080;min-width:100%;min-height:100%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.v8-page.ft-mode .v8-bg-sync{display:none}
+.v8-page.lights-off .v8-bg-sync{position:absolute;inset:0;overflow:visible;z-index:51}
+.v8-page.lights-off .v8-bg-sync-inner{position:static;min-width:0;min-height:0;width:0;height:0;transform:none;top:auto;left:auto}
+
+/* === 返回按钮 === */
+.v8-back{position:absolute;top:20px;left:20px;z-index:100;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.2);color:#fff;text-decoration:none;transition:all .25s;padding:0}
+.v8-back:hover{background:rgba(255,255,255,0.25);border-color:rgba(255,255,255,0.35)}
+
+/* 返回确认弹窗 */
+.v8-back-modal{position:absolute;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0);backdrop-filter:blur(0px);transition:background .3s,backdrop-filter .3s}
+.v8-back-modal.active{display:flex;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px)}
+.v8-bm-card{width:360px;padding:24px;border-radius:18px;background:rgba(20,20,30,0.95);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.4);transform:scale(0.95);opacity:0;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .25s}
+.v8-back-modal.active .v8-bm-card{transform:scale(1);opacity:1}
+.v8-bm-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:6px}
+.v8-bm-desc{font-size:.78rem;color:var(--text2);margin-bottom:16px;line-height:1.5}
+.v8-bm-actions{display:flex;flex-direction:column;gap:8px}
+.v8-bm-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:10px;font-size:.82rem;font-weight:500;cursor:pointer;border:none;transition:all .2s}
+.v8-bm-bg{background:linear-gradient(135deg,#1e293b,#334155);color:#fff}
+.v8-bm-bg:hover{filter:brightness(1.1)}
+.v8-bm-stop{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171}
+.v8-bm-stop:hover{background:rgba(239,68,68,0.2)}
+.v8-bm-cancel{background:rgba(255,255,255,0.05);color:var(--text3)}
+.v8-bm-cancel:hover{background:rgba(255,255,255,0.1);color:var(--text2)}
+.v8-ft-back{position:absolute;top:16px;left:16px;z-index:100;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#cbd5e1;font-size:.8rem;font-weight:500;transition:all .25s}
+.v8-ft-back:hover{background:rgba(255,255,255,0.1);color:#e2e8f0}
+
+/* === 阶段指示（已隐藏） === */
+.v8-phase{display:none!important}
+@keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+/* === 视频小窗（在背景同步层内） === */
+.v8-vid{position:absolute;z-index:10;pointer-events:auto;top:13.3%;left:31.8%;width:16.4%;height:17.3%;border-radius:2px;overflow:hidden;background:#000;box-shadow:none;transition:all .6s cubic-bezier(0.4,0,0.2,1)}
+.v8-vid video{width:100%;height:100%;object-fit:cover;display:block}
+.v8-vid .v8-vid-label{position:absolute;bottom:8px;left:8px;padding:3px 10px;border-radius:6px;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);font-size:.68rem;color:#cbd5e1}
+.v8-page.ft-mode .v8-scrub{display:none}
+.v8-page.ft-mode .v8-vid{position:static;width:100%;height:100%;border-radius:0;box-shadow:none}
+.v8-page.lights-off .v8-vid{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);width:50%;height:auto;aspect-ratio:16/9;border-radius:12px;box-shadow:0 0 60px rgba(100,116,139,0.25),0 0 150px rgba(100,116,139,0.1);z-index:52}
+
+/* 烧录字幕 */
+.bs{position:absolute;bottom:8%;left:50%;transform:translateX(-50%);z-index:5;opacity:0;transition:opacity .3s;pointer-events:none}
+.bs.visible{opacity:1}.bs.erased{display:none}
+.bs .bs-bar{display:inline-block;padding:4px 14px;border-radius:4px;background:rgba(0,0,0,0.7)}
+.bs .bs-text{color:#fff;font-size:.8rem}
+.bs.erasing .bs-bar{animation:ef .6s ease infinite alternate}
+@keyframes ef{0%{opacity:1}100%{opacity:.3}}
+
+/* 字幕预览 */
+.v8-subp{position:absolute;bottom:12%;left:50%;transform:translateX(-50%);z-index:8;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
+.v8-subp.visible{opacity:1}
+.v8-subp .so{display:block;font-size:.75rem;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.v8-subp .st{display:inline-block;padding:4px 16px;border-radius:6px;background:rgba(0,0,0,0.75);color:#fff;font-size:.85rem;font-weight:500}
+
+/* 配音指示 */
+.v8-vp{position:absolute;top:12px;right:12px;z-index:8;padding:6px 12px;border-radius:8px;background:rgba(236,72,153,0.15);border:1px solid rgba(236,72,153,0.3);color:#f472b6;font-size:.72rem;opacity:0;transition:opacity .3s}
+.v8-vp.visible{opacity:1}
+
+/* 擦除覆盖 */
+.v8-ec{position:absolute;inset:0;z-index:6;pointer-events:none}
+.v8-ec.int{pointer-events:auto}
+.erb{position:absolute;border:2px solid rgba(239,68,68,0.6);border-radius:4px;background:rgba(239,68,68,0.08);cursor:move;transition:border-color .2s}
+.erb.active{border-color:#ef4444;box-shadow:0 0 12px rgba(239,68,68,0.3)}
+.erb .er-l{position:absolute;top:-20px;left:4px;font-size:.6rem;color:#ef4444;font-weight:700;background:rgba(0,0,0,0.6);padding:1px 5px;border-radius:3px}
+.erh{position:absolute;width:8px;height:8px;background:#ef4444;border-radius:2px;border:1px solid rgba(0,0,0,0.3);z-index:2}
+.erh-nw{top:-4px;left:-4px;cursor:nw-resize}.erh-n{top:-4px;left:50%;transform:translateX(-50%);cursor:n-resize}
+.erh-ne{top:-4px;right:-4px;cursor:ne-resize}.erh-w{top:50%;left:-4px;transform:translateY(-50%);cursor:w-resize}
+.erh-e{top:50%;right:-4px;transform:translateY(-50%);cursor:e-resize}.erh-sw{bottom:-4px;left:-4px;cursor:sw-resize}
+.erh-s{bottom:-4px;left:50%;transform:translateX(-50%);cursor:s-resize}.erh-se{bottom:-4px;right:-4px;cursor:se-resize}
+
+/* === Scrubber === */
+.v8-scrub{position:absolute;bottom:0;left:0;right:0;z-index:15;padding:6px 10px 8px;display:flex;align-items:center;gap:8px;background:linear-gradient(transparent,rgba(0,0,0,0.7));opacity:0;transition:opacity .3s}
+.v8-vid:hover .v8-scrub,.v8-scrub.vis{opacity:1}
+.v8-sp{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.v8-sp:hover{background:rgba(255,255,255,0.25)}
+.v8-sb{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);position:relative;cursor:pointer}
+.v8-sf{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent),#a78bfa);transition:width .1s linear}
+.v8-st{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 4px rgba(0,0,0,0.3);opacity:0;transition:opacity .2s}
+.v8-vid:hover .v8-st{opacity:1}
+.v8-stm{font-size:.65rem;color:rgba(255,255,255,0.7);white-space:nowrap;min-width:70px;text-align:right}
+
+/* === 毛玻璃聊天 === */
+.v8-chat{position:absolute;z-index:20;top:5%;right:24px;width:400px;height:82%;display:flex;flex-direction:column;background:rgba(255,255,255,0.55);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);border:1px solid rgba(255,255,255,0.35);border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,0.12),inset 0 1px 0 rgba(255,255,255,0.4);overflow:hidden;transition:all .6s cubic-bezier(0.4,0,0.2,1)}
+.v8-page.ft-mode .v8-chat{opacity:0;pointer-events:none;transform:translateX(100px)}
+.v8-page.lights-off .v8-chat{opacity:0;pointer-events:none}
+.v8-ch{padding:16px 20px 12px;border-bottom:1px solid rgba(0,0,0,0.06);flex-shrink:0}
+.v8-ch h3{font-size:.92rem;font-weight:700;color:var(--glass-text)}
+.v8-ch .mc{font-weight:400;font-size:.72rem;color:var(--glass-text3)}
+.v8-ch p{font-size:.72rem;color:var(--glass-text2);margin-top:2px}
+.v8-ch-collapse{width:28px;height:28px;border-radius:8px;border:none;background:rgba(0,0,0,0.05);color:var(--glass-text3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0}
+.v8-ch-collapse:hover{background:rgba(0,0,0,0.1);color:var(--glass-text)}
+
+/* 聊天收起态 */
+.v8-chat.collapsed{transform:translateX(calc(100% + 40px));opacity:0;pointer-events:none}
+
+/* FAB气泡 */
+.v8-chat-fab{position:absolute;z-index:22;bottom:24px;right:24px;display:none;align-items:center;gap:10px;padding:8px 16px 8px 8px;border-radius:50px;background:rgba(255,255,255,0.7);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border:1px solid rgba(255,255,255,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.12);cursor:pointer;transition:all .3s}
+.v8-chat-fab.active{display:flex;animation:fabBounceIn .4s cubic-bezier(.16,1,.3,1)}
+@keyframes fabBounceIn{from{opacity:0;transform:scale(0.8) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.v8-chat-fab:hover{background:rgba(255,255,255,0.85);box-shadow:0 6px 28px rgba(0,0,0,0.18)}
+/* FAB 单头像 */
+.v8-fab-avatars{display:flex;flex-shrink:0}
+.v8-fab-avatars img{width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(255,255,255,0.6);background:#fff}
+.v8-fab-avatars img:not(:first-child){display:none}
+.v8-fab-label{font-size:.78rem;font-weight:600;color:#334155;white-space:nowrap}
+/* FAB 未读 bounce */
+.v8-fab-badge{min-width:18px;height:18px;border-radius:9px;background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;animation:gentleBounce 1.5s ease-in-out infinite}
+@keyframes gentleBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.v8-page.ft-mode .v8-chat-fab{display:none}
+.v8-page.lights-off .v8-chat-fab{display:none}
+.v8-cf{flex:1;overflow-y:auto;padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px}
+
+/* 气泡 */
+.chat-bubble{animation:bi .4s cubic-bezier(.16,1,.3,1)}
+@keyframes bi{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+/* 头像微弹 */
+.chat-bubble--ai .role-avatar-img{animation:avatarPop .35s cubic-bezier(.16,1,.3,1)}
+@keyframes avatarPop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.chat-bubble--ai{display:flex;gap:12px;align-items:flex-start}
+.bubble-avatar{flex-shrink:0;width:40px}
+.role-avatar-img{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.role-badge{display:none}
+.bubble-body{flex:1;padding:0;border-radius:0;background:none;border:none;font-size:.85rem;line-height:1.6;color:var(--glass-text);box-shadow:none}
+.bubble-body .role-name-line{font-size:.75rem;color:var(--glass-text3);margin-bottom:4px;font-weight:600}
+.bubble-body .role-name-line strong{color:var(--glass-text3);font-weight:600}
+.bubble-body .role-msg{font-size:.85rem;font-weight:400;color:var(--glass-text);line-height:1.6;margin-bottom:6px}
+.role-director .bubble-body{border-left:none}
+.role-postprod .bubble-body{border-left:none}
+.role-translator .bubble-body{border-left:none}
+.role-voice .bubble-body{border-left:none}
+
+.chat-bubble--user{align-self:flex-end;max-width:85%;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,0.25);border:1px solid rgba(255,255,255,0.5);color:var(--glass-text);font-size:.82rem;line-height:1.6;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.chat-join-msg{display:flex;align-items:center;gap:6px;justify-content:center;font-size:.72rem;color:var(--glass-text3);padding:6px 0;animation:bi .4s ease}
+.join-avatars{display:none}
+
+/* 进度卡（待办小卡片） */
+.role-progress-card{padding:0;border-radius:0;background:none;border:none;margin-top:0}
+.rpc-header{display:none}
+.rpc-tasks{display:flex;flex-direction:column;gap:6px;margin-top:0}
+.rpc-task{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--glass-text);padding:5px 14px;border-radius:12px;background:rgba(255,255,255,0.25);border:1px solid rgba(255,255,255,0.5);box-shadow:0 1px 4px rgba(0,0,0,0.04);width:fit-content}
+.rpc-task-icon{width:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.7rem}
+.rpc-task--active{color:var(--glass-text);background:rgba(255,255,255,0.25)}.rpc-task--active .rpc-task-icon{animation:dp 1.5s ease infinite}
+.rpc-task--done{color:var(--glass-text);background:rgba(255,255,255,0.25)}.rpc-task--done .rpc-task-icon{color:#1e293b}
+.rpc-task--pending{color:var(--glass-text3);background:rgba(255,255,255,0.18)}
+.rpc-detail-link{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;border-radius:8px;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);font-size:.72rem;color:var(--glass-text);cursor:pointer;transition:all .2s}
+.rpc-detail-link:hover{background:rgba(0,0,0,0.08)}
+.rpc-detail-link.rpc-ft-active{background:rgba(0,0,0,0.06);color:var(--glass-text3);cursor:default;pointer-events:none}
+.rpc-detail-arrow{font-size:.8rem}
+
+/* 结果按钮 */
+.chat-result-actions{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.chat-result-actions-row{display:flex;gap:8px}
+.ra-btn-refine,.ra-btn-download{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:1;padding:12px 16px;border-radius:14px;border:1px solid rgba(0,0,0,0.1);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;background:rgba(255,255,255,0.7);color:var(--glass-text);backdrop-filter:blur(8px)}
+.ra-btn-refine:hover,.ra-btn-download:hover{background:rgba(255,255,255,0.9);box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+/* 视频预览卡 */
+.chat-video-preview{margin-top:10px;border-radius:14px;overflow:hidden;background:#000;position:relative;cursor:pointer}
+/* Loading 态 */
+.chat-video-loading{background:none;cursor:default}
+.cvp-loading-bg{width:100%;aspect-ratio:16/9;border-radius:14px;background:linear-gradient(135deg,#b8c6e0 0%,#a8b4d4 30%,#c0b8d8 60%,#d0c8e0 100%);display:flex;align-items:center;justify-content:center;position:relative}
+.cvp-loading-star{animation:cvpSpin 3s ease-in-out infinite}
+.cvp-loading-star-sm{position:absolute;top:38%;right:38%;animation:cvpSpin 3s ease-in-out infinite reverse;animation-delay:.5s}
+@keyframes cvpSpin{0%{opacity:.7;transform:scale(0.9) rotate(0deg)}50%{opacity:1;transform:scale(1.1) rotate(15deg)}100%{opacity:.7;transform:scale(0.9) rotate(0deg)}}
+.inline-progress-bar{height:6px;border-radius:3px;background:rgba(0,0,0,0.06);overflow:hidden}
+.inline-progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#475569,#64748b);transition:width .6s ease}
+
+/* === 精调模式整体布局 === */
+.v8-page.ft-mode .v8-back{opacity:1;pointer-events:auto;z-index:100}
+.v8-ft-layout{position:absolute;inset:0;z-index:30;display:none;grid-template-columns:1fr 340px;grid-template-rows:1fr minmax(240px,280px);gap:12px;padding:72px 20px 20px;background:#0c0c14;opacity:0;transition:all .5s cubic-bezier(0.4,0,0.2,1);overflow:hidden}
+.v8-page.ft-mode .v8-ft-layout{display:grid;opacity:1}
+/* 精调卡片 stagger cascade 入场 */
+@keyframes ftCardIn{from{opacity:0;transform:scale(0.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.v8-page.ft-mode .v8-ft-video-card{animation:ftCardIn .4s cubic-bezier(.16,1,.3,1) 0.05s both}
+.v8-page.ft-mode .v8-ft-tl-card{animation:ftCardIn .4s cubic-bezier(.16,1,.3,1) 0.15s both}
+.v8-page.ft-mode .v8-ft-right-card{animation:ftCardIn .4s cubic-bezier(.16,1,.3,1) 0.25s both}
+/* 点阵背景 */
+.v8-ft-layout::before{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.08) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0}
+/* 鼠标跟随亮光 */
+.v8-ft-glow{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.08) 0%,rgba(99,102,241,0.03) 40%,transparent 70%);pointer-events:none;z-index:0;transform:translate(-50%,-50%);transition:left .15s ease-out,top .15s ease-out;will-change:left,top;opacity:0}
+.v8-page.ft-mode .v8-ft-glow{opacity:1}
+
+/* 左上：视频卡片 */
+.v8-ft-video-card{grid-column:1;grid-row:1;border-radius:12px;overflow:hidden;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);position:relative;display:flex;flex-direction:column;min-height:0;z-index:1}
+.v8-ft-video-card video{flex:1;width:100%;aspect-ratio:16/9;object-fit:contain;background:#000;display:block;min-height:0}
+
+/* 左下：时间线卡片 */
+.v8-ft-tl-card{grid-column:1;grid-row:2;border-radius:12px;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);overflow:hidden;display:flex;flex-direction:column;z-index:1}
+.v8-ft-tl-card .v8-tlc{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.v8-ft-tl-card .v8-ruler{border-bottom:1px solid var(--border)}
+.v8-ft-tl-card .v8-tls{padding:8px 0 0;flex:1;min-height:80px}
+.v8-ft-tl-card .v8-trk{display:block;position:relative;height:32px;padding:0 14px 0 80px;margin-bottom:4px}
+.v8-ft-tl-card .v8-trk.hidden{display:none}
+.v8-ft-tl-card .v8-trk-l{left:10px}
+.v8-ft-tl-card .v8-ph{left:80px}
+
+/* 右侧：精调面板卡片 */
+.v8-ft-right-card{grid-column:2;grid-row:1/3;border-radius:12px;background:rgba(18,18,28,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.1);display:flex;flex-direction:column;overflow:hidden;z-index:1}
+.v8-ft-right-card .v8-ft-topbar{display:none}
+.v8-ft-right-card .v8-ft-topbar-left{display:flex;align-items:center;gap:8px}
+.v8-ft-right-card .v8-ft-topbar-left .v8-ftt{font-size:.9rem}
+.v8-ft-right-card .v8-ft-topbar-left .v8-ftd{font-size:.68rem;color:var(--text3);margin:0}
+.v8-ft-cancel{padding:6px 14px;border-radius:8px;border:none;background:rgba(239,68,68,0.1);color:#f87171;font-size:.76rem;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.v8-ft-cancel:hover{background:rgba(239,68,68,0.2);color:#fca5a5}
+
+/* 精调面板内部保留原有 */
+.v8-ftp{position:static;z-index:auto;width:auto;height:auto;display:flex;flex-direction:column;flex:1;background:transparent;border:none;opacity:1;pointer-events:auto;transform:none;transition:none;overflow:hidden}
+.v8-page.ft-mode .v8-ftp{opacity:1;pointer-events:auto;transform:none}
+.v8-fth{display:none}
+.v8-ft-back{display:none}
+.v8-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px}
+.v8-tab{padding:12px 16px;font-size:.82rem;font-weight:500;color:var(--text3);cursor:pointer;position:relative;transition:color .2s;border:none;background:none}
+.v8-tab.locked{opacity:.35;cursor:not-allowed}
+.v8-tab.active{color:#fff;font-weight:600}
+.v8-tab.active::after{content:'';position:absolute;bottom:-1px;left:16px;right:16px;height:2px;background:#fff;border-radius:1px}
+.v8-tab.unlocked{color:var(--text2)}.v8-tab.unlocked:hover{color:var(--text)}
+.v8-ftc{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column}
+.v8-fp{display:none;flex-direction:column;flex:1;min-height:0}.v8-fp.active{display:flex}
+.v8-fsl{font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.ft-count{font-weight:400;color:var(--text4)}
+
+/* 擦除卡片 — 参考图风格 */
+.frc{display:flex;flex-direction:column;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .2s;margin-bottom:8px;overflow:hidden}
+.frc:hover{border-color:rgba(255,255,255,0.15)}.frc.active{border-color:rgba(255,255,255,0.25)}
+.frc-head{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.fri{font-size:.82rem;font-weight:700;color:var(--text);min-width:28px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.15);padding-right:10px}
+.frc-time{font-size:.78rem;color:var(--text2);flex:1}
+.fre,.frd{width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;cursor:pointer}
+.fre:hover{background:rgba(255,255,255,0.06);color:var(--text)}.frd:hover{background:rgba(239,68,68,0.1);color:#ef4444}
+
+/* 内联编辑 — 参考图风格 */
+.fie{max-height:0;overflow:hidden;transition:max-height .3s,padding .3s;padding:0 14px;margin-bottom:0}
+.fie.expanded{max-height:400px;padding:14px;margin-bottom:0;border-top:1px solid rgba(255,255,255,0.06)}
+.fie-title{font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:12px}
+.fier{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.fiel{font-size:.75rem;color:var(--text2);min-width:70px;flex-shrink:0}
+.fiei{flex:1;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);font-size:.78rem;min-width:0;font-family:inherit}
+.fiei:focus{border-color:rgba(255,255,255,0.25);outline:none}
+.fie-s,.fie-e{width:90px;flex:none;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);font-size:.78rem;text-align:center;font-family:inherit}
+.fie-s:focus,.fie-e:focus{border-color:rgba(255,255,255,0.25);outline:none}
+.fie-time{display:flex;align-items:center;gap:8px}.fie-sep{color:var(--text3);font-size:.78rem}
+/* 位置/尺寸网格 */
+.fie-grid{display:flex;align-items:center;gap:6px;flex:1}
+.fie-field{display:flex;align-items:center;gap:4px}
+.fie-field label{font-size:.72rem;color:var(--text3);flex-shrink:0}
+.fie-field input{width:52px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);font-size:.78rem;text-align:center;font-family:inherit}
+.fie-field input:focus{border-color:rgba(255,255,255,0.25);outline:none}
+.fie-field-unit{font-size:.72rem;color:var(--text3)}
+/* 单位单选 */
+.fie-radio{display:flex;align-items:center;gap:12px;flex:1}
+.fie-radio label{display:flex;align-items:center;gap:4px;font-size:.78rem;color:var(--text);cursor:pointer}
+.fie-radio input[type="radio"]{accent-color:#fff;width:14px;height:14px}
+
+/* 编辑态按钮 — 白色胶囊风格 */
+.fie-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+.fie-save,.fie-cancel{padding:8px 20px;border-radius:100px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit}
+.fie-save{background:#fff;color:#0c0c14}.fie-save:hover{background:#f0f0f0}
+.fie-cancel{background:rgba(255,255,255,0.06);color:var(--text2);border:1px solid rgba(255,255,255,0.1)}.fie-cancel:hover{background:rgba(255,255,255,0.1)}
+
+/* 精调设置行 */
+.v8-ft-settings{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.v8-fts-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.v8-fts-label{font-size:.72rem;color:var(--text3);flex-shrink:0}
+.v8-fts-select{padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--text);font-size:.78rem;font-family:inherit;min-width:120px}
+.v8-fts-select option{background:#1a1a2e;color:var(--text)}
+
+/* 字幕卡片 — 参考图风格 */
+.fsi{display:flex;flex-direction:column;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .2s;margin-bottom:8px;overflow:hidden}
+.fsi:hover{border-color:rgba(255,255,255,0.15)}.fsi.active{border-color:rgba(255,255,255,0.25)}
+.fsi-header{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.fsi-t{font-size:.82rem;font-weight:700;color:var(--text);min-width:28px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.15);padding-right:10px}
+.fsi-time{font-size:.78rem;color:var(--text2);flex:1}
+.fsi-eb{width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;cursor:pointer}
+.fsi-eb:hover{background:rgba(255,255,255,0.06);color:var(--text)}
+.fsi-del{width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;cursor:pointer}
+.fsi-del:hover{background:rgba(239,68,68,0.1);color:#ef4444}
+.fsi-tx{padding:0 14px 12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:0}
+.fsi-o{display:block;font-size:.78rem;color:var(--text2);margin-bottom:4px;line-height:1.5}
+.fsi-tr{display:block;font-size:.78rem;color:var(--text);line-height:1.5}
+
+/* 配音卡片 — 参考图风格 */
+.fvi{display:flex;flex-direction:column;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .2s;margin-bottom:8px;overflow:hidden}
+.fvi:hover{border-color:rgba(255,255,255,0.15)}.fvi.active{border-color:rgba(255,255,255,0.25)}
+.fvi-header{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.fvi-t{font-size:.82rem;font-weight:700;color:var(--text);min-width:28px;flex-shrink:0;border-right:1px solid rgba(255,255,255,0.15);padding-right:10px}
+.fvi-time{font-size:.78rem;color:var(--text2);flex:1}
+.fvi-p{width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,0.06);color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;cursor:pointer}
+.fvi-p:hover{background:rgba(255,255,255,0.1);color:var(--text)}
+.fvi-del{width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;cursor:pointer}
+.fvi-del:hover{background:rgba(239,68,68,0.1);color:#ef4444}
+.fvi-tx{padding:0 14px 12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;font-size:.78rem;color:var(--text2);line-height:1.5}
+
+.v8-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:12px;border-radius:10px;border:1px dashed rgba(255,255,255,0.12);background:rgba(255,255,255,0.03);color:var(--text3);font-size:.78rem;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.v8-add:hover{border-color:rgba(255,255,255,0.25);color:var(--text);background:rgba(255,255,255,0.06)}
+
+/* 全局设置区 */
+.v8-ft-global{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+.v8-ftg-group{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border)}
+.v8-ftg-icon{font-size:.8rem;flex-shrink:0;width:20px;text-align:center}
+.v8-ftg-label{font-size:.72rem;color:var(--text3);min-width:28px;flex-shrink:0}
+.v8-ftg-capsule{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.v8-ftg-capsule select{flex:1;min-width:0;padding:4px 6px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text);font-size:.7rem;font-family:inherit}
+.v8-ftg-capsule select option{background:#1a1a2e;color:var(--text)}
+.v8-ftg-arrow{color:var(--text4);font-size:.7rem;flex-shrink:0}
+.v8-ftg-toggle{display:flex;align-items:center;gap:4px;flex-shrink:0;cursor:pointer}
+.v8-ftg-toggle input[type="checkbox"]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer}
+.v8-ftg-tg-label{font-size:.68rem;color:var(--text3)}
+.v8-done{padding:16px 20px;margin-top:auto;flex-shrink:0;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);position:sticky;bottom:0;background:rgba(18,18,28,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.v8-done .v8-ft-cancel{display:none}
+.v8-done-btn{flex:1;padding:13px;border-radius:10px;background:#fff;border:none;color:#0c0c14;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:none}
+.v8-done-btn:hover{background:#f0f0f0;box-shadow:0 2px 12px rgba(255,255,255,0.1)}
+
+/* === 时间线（精调卡片内） === */
+.v8-tl{opacity:0;pointer-events:none;transition:all .4s cubic-bezier(0.4,0,0.2,1)}
+.v8-page.ft-mode .v8-tl{opacity:1;pointer-events:auto}
+.v8-tlc{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border)}
+.v8-tlp{width:28px;height:28px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.v8-tlp:hover{background:rgba(255,255,255,0.1)}
+.v8-tlt{font-size:.7rem;color:var(--text3)}.v8-tlt .cur{color:var(--text);font-weight:600}
+.v8-tls{position:relative;padding:8px 0;min-height:60px}
+.v8-trk{display:none;position:relative;height:28px;padding:0 12px 0 80px;margin-bottom:4px}
+.v8-trk.vis{display:block}
+.v8-trk-l{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.65rem;font-weight:600;color:var(--text3);width:64px;text-align:right}
+.v8-trk-c{position:relative;height:100%;background:rgba(255,255,255,0.02);border-radius:4px}
+.v8-seg{position:absolute;top:3px;bottom:3px;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:700;color:rgba(255,255,255,0.5);transition:border-color .15s,box-shadow .15s;user-select:none}
+.v8-seg.selected{box-shadow:0 0 0 2px var(--accent);z-index:2}
+.v8-seg--erase{background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.35)}
+.v8-seg--erase.selected{border-color:#ef4444;background:rgba(239,68,68,0.3)}
+.v8-seg--subtitle{background:rgba(37,99,235,0.2);border:1px solid rgba(37,99,235,0.35)}
+.v8-seg--subtitle.selected{border-color:#2563eb;background:rgba(37,99,235,0.3)}
+.v8-seg--voice{background:rgba(236,72,153,0.2);border:1px solid rgba(236,72,153,0.35)}
+.v8-seg--voice.selected{border-color:#ec4899;background:rgba(236,72,153,0.3)}
+.v8-seg:hover{filter:brightness(1.2)}
+/* Drag handles on segments */
+.v8-seg-h{position:absolute;top:-2px;bottom:-2px;width:6px;cursor:col-resize;z-index:3;border-radius:2px;transition:background .15s}
+.v8-seg-h:hover,.v8-seg-h.dragging{background:rgba(255,255,255,0.3)}
+.v8-seg-h--l{left:-3px}
+.v8-seg-h--r{right:-3px}
+.v8-ph{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:5;pointer-events:none;left:80px;transition:left .1s linear}
+.v8-ph::before{content:'';position:absolute;top:-2px;left:-4px;width:10px;height:6px;background:var(--accent);clip-path:polygon(0 0,100% 0,50% 100%)}
+.v8-ruler{position:relative;height:22px;padding:0 14px 0 80px;flex-shrink:0}
+.v8-ruler-inner{position:relative;width:100%;height:100%}
+.v8-rm{position:absolute;display:flex;flex-direction:column;align-items:center}
+.v8-rm .tick{width:1px;height:8px;background:rgba(255,255,255,0.15);order:2}
+.v8-rm .tl{font-size:.55rem;color:var(--text4);order:1;margin-bottom:1px}
+
+/* === 步骤闪光 === */
+.v8-flash{position:absolute;inset:0;z-index:15;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0}
+.v8-flash.active{animation:sf 1.2s ease forwards}
+@keyframes sf{0%{opacity:0}15%{opacity:1}60%{opacity:1}100%{opacity:0}}
+.v8-flash-b{display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:10px;background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);font-size:.72rem;font-weight:600;color:#e2e8f0}
+.v8-flash-d{width:7px;height:7px;border-radius:50%}
+/* 步骤完成光环 */
+.v8-flash.active::after{content:'';position:absolute;inset:50%;width:0;height:0;border-radius:50%;box-shadow:0 0 60px 30px rgba(129,140,248,0.3);animation:ringExpand 1s ease forwards;pointer-events:none}
+@keyframes ringExpand{0%{inset:50%;opacity:1}100%{inset:20%;opacity:0}}
+
+/* === 关灯暗幕 === */
+.v8-dim{position:absolute;inset:0;z-index:50;pointer-events:none;opacity:0;transition:opacity .8s}
+.v8-dim.active{pointer-events:auto;opacity:1}
+.v8-dim-bg{position:absolute;inset:0;background:rgba(0,0,0,0.92);cursor:pointer}
+/* 关灯时视频呼吸脉冲 */
+.v8-page.lights-off .v8-vid{animation:breathGlow 3s ease-in-out infinite}
+@keyframes breathGlow{0%,100%{box-shadow:0 0 30px rgba(129,140,248,0.15)}50%{box-shadow:0 0 50px rgba(129,140,248,0.3)}}
+.v8-dim-acts{position:absolute;bottom:6%;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:56}
+.v8-dbtn{padding:10px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);color:#e2e8f0;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.v8-dbtn:hover{background:rgba(255,255,255,0.15)}
+.v8-dbtn.pri{background:linear-gradient(135deg,#1e293b,#334155);border:none}
+.v8-dbtn.pri:hover{filter:brightness(1.1)}
+
+/* 对比模式：成片视频缩到上半 */
+.v8-page.compare-mode .v8-vid{top:5%;left:50%;transform:translateX(-50%);width:42%;height:auto;aspect-ratio:16/9;border-radius:10px;box-shadow:0 0 40px rgba(129,140,248,0.2)}
+.v8-page.compare-mode .v8-vid .v8-vid-label,.v8-page.compare-mode #cmpResLabel{display:block!important;position:absolute;top:8px;left:8px;padding:3px 10px;border-radius:6px;background:rgba(0,0,0,0.6);font-size:.68rem;color:#e2e8f0;font-weight:600;z-index:5}
+
+/* 对比：原片容器在下半 */
+.v8-cmp{position:absolute;z-index:55;bottom:14%;left:50%;transform:translateX(-50%);width:42%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000;box-shadow:0 4px 30px rgba(0,0,0,0.5);opacity:0;pointer-events:none;transition:all .4s}
+.v8-cmp.active{opacity:1;pointer-events:auto}
+.v8-cmp video{width:100%;height:100%;object-fit:cover}
+.v8-cmp-l{position:absolute;top:8px;left:8px;padding:3px 10px;border-radius:6px;background:rgba(0,0,0,0.6);font-size:.68rem;color:#94a3b8}
+
+/* ============================================
+   手机版适配（<= 768px）
+   交互重新设计：聊天为主，视频收到顶部条
+   ============================================ */
+@media (max-width: 768px) {
+    /* --- 返回按钮：更小更轻 --- */
+    .v8-back {
+        top: 8px; left: 8px; padding: 5px 10px; font-size: 0.7rem;
+        border-radius: 8px; z-index: 110; gap: 4px;
+    }
+    .v8-back svg { width: 14px; height: 14px; }
+    .v8-back span { display: none; }
+
+    /* --- 背景层 --- */
+    .v8-bg { filter: blur(30px) !important; opacity: 0.3 !important; }
+
+    /* --- 视频小窗：收到顶部居中，非常小 --- */
+    .v8-vid {
+        top: 50px !important; left: 50% !important; transform: translateX(-50%) !important;
+        width: 40% !important; height: auto !important; aspect-ratio: 16/9 !important;
+        border-radius: 8px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    }
+
+    /* --- scrubber 隐藏（手机不需要拖进度） --- */
+    .v8-scrub { display: none !important; }
+
+    /* --- 聊天面板：全屏为主 --- */
+    .v8-chat {
+        position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+        top: auto !important; width: 100% !important; max-width: none !important;
+        height: calc(100vh - 120px) !important;
+        border-radius: 16px 16px 0 0 !important;
+        z-index: 20 !important;
+        background: rgba(10,10,18,0.97) !important;
+        backdrop-filter: blur(24px) !important;
+    }
+    .v8-chat-header {
+        padding: 10px 16px !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    }
+    .v8-chat-body { padding: 12px 14px 20px !important; }
+    .chat-bubble { max-width: 92% !important; font-size: 0.78rem !important; }
+    .chat-bubble--user { max-width: 85% !important; }
+    .role-progress-card { font-size: 0.72rem !important; }
+
+    /* --- 精调模式：纯列表，全屏接管 --- */
+    .v8-ft-layout {
+        display: flex !important; flex-direction: column !important;
+        padding: 0 !important; gap: 0 !important;
+    }
+    /* 视频和时间线完全隐藏 */
+    .v8-ft-video-card { display: none !important; }
+    .v8-ft-tl-card { display: none !important; }
+
+    /* 精调面板全屏 */
+    .v8-ft-right-card {
+        flex: 1 !important; border-radius: 0 !important;
+        max-height: none !important; overflow-y: auto !important;
+        background: #0a0a0f !important; border: none !important;
+    }
+    .v8-ft-right-card .v8-ft-topbar {
+        position: sticky !important; top: 0 !important; z-index: 10 !important;
+        padding: 12px 16px 8px !important;
+        background: rgba(10,10,15,0.95) !important;
+        backdrop-filter: blur(16px) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+    }
+    .v8-ft-right-card .v8-ftt { font-size: 0.88rem !important; }
+    .v8-ft-right-card .v8-ftd { font-size: 0.65rem !important; }
+    .v8-ft-cancel { font-size: 0.72rem !important; padding: 6px 12px !important; }
+    .v8-tabs {
+        position: sticky !important; top: 44px !important; z-index: 9 !important;
+        padding: 0 16px !important;
+        background: rgba(10,10,15,0.95) !important;
+        backdrop-filter: blur(16px) !important;
+    }
+    .v8-tab { font-size: 0.72rem !important; padding: 8px 12px !important; }
+    .v8-ftc { padding: 12px 16px 100px !important; }
+
+    /* 完成按钮吸底 */
+    .v8-done {
+        position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+        padding: 10px 16px !important; margin: 0 !important;
+        background: rgba(10,10,15,0.95) !important;
+        backdrop-filter: blur(16px) !important;
+        border-top: 1px solid rgba(255,255,255,0.06) !important;
+        z-index: 20 !important;
+    }
+    .v8-done-btn { padding: 12px !important; font-size: 0.8rem !important; border-radius: 12px !important; }
+
+    /* --- 精调列表项：卡片化，更易触控 --- */
+    .fsi, .fvi, .fei {
+        font-size: 0.75rem !important; padding: 10px 12px !important;
+        border-radius: 10px !important; margin-bottom: 6px !important;
+    }
+    .fsi-t, .fvi-t { font-size: 0.65rem !important; min-width: 40px !important; }
+    .fsi-tx, .fvi-tx { font-size: 0.72rem !important; }
+    /* 编辑/删除按钮更大便于触控 */
+    .fsi-eb, .fvi-del, .fvi-p, .fei-del {
+        width: 32px !important; height: 32px !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+    }
+
+    /* 内联编辑面板 */
+    .fie {
+        padding: 12px !important; margin: 4px 0 8px !important;
+        border-radius: 10px !important;
+    }
+    .fier { margin-bottom: 8px !important; }
+    .fiel { font-size: 0.68rem !important; min-width: 48px !important; }
+    .fiei { font-size: 0.75rem !important; padding: 8px 10px !important; border-radius: 8px !important; }
+    .fie-s, .fie-e { width: 56px !important; font-size: 0.72rem !important; padding: 8px 6px !important; border-radius: 8px !important; }
+    .fie-actions { gap: 8px !important; margin-top: 10px !important; }
+    .fie-save, .fie-cancel { padding: 8px 16px !important; font-size: 0.75rem !important; border-radius: 8px !important; }
+
+    /* 区域列表标题 */
+    .v8-fsl { font-size: 0.7rem !important; margin-bottom: 8px !important; }
+    .v8-add { font-size: 0.72rem !important; padding: 10px !important; border-radius: 10px !important; }
+
+    /* 全局配置条 */
+    .v8-ft-global { padding: 10px 12px !important; border-radius: 10px !important; margin-bottom: 8px !important; }
+    .v8-ftg-group { flex-wrap: wrap !important; gap: 6px !important; }
+    .v8-ftg-label { font-size: 0.68rem !important; }
+    .v8-ftg-capsule select { font-size: 0.68rem !important; padding: 4px 6px !important; border-radius: 6px !important; }
+
+    /* --- 关灯模式 --- */
+    .v8-page.lights-off .v8-vid {
+        width: 88% !important; top: 38% !important;
+        border-radius: 10px !important;
+    }
+    .v8-page.lights-off .v8-bg-sync { z-index: 51 !important; }
+    .v8-dim-acts {
+        bottom: 3% !important; flex-wrap: wrap !important;
+        justify-content: center !important; gap: 6px !important;
+        padding: 0 16px !important;
+    }
+    .v8-dbtn { padding: 8px 14px !important; font-size: 0.72rem !important; border-radius: 10px !important; }
+
+    /* --- 对比模式 --- */
+    .v8-page.compare-mode .v8-vid { width: 85% !important; top: 4% !important; }
+    .v8-cmp { width: 85% !important; bottom: 10% !important; border-radius: 8px !important; }
+
+    /* --- 闪光 --- */
+    .v8-flash-b { padding: 4px 10px !important; font-size: 0.6rem !important; border-radius: 8px !important; }
+    .v8-flash-d { width: 6px !important; height: 6px !important; }
+
+    /* --- 加入消息 --- */
+    .chat-join-msg { font-size: 0.62rem !important; }
+    .join-avatars img { width: 18px !important; height: 18px !important; border-radius: 6px !important; }
+}
+
+@media (max-width: 480px) {
+    .v8-vid { width: 50% !important; }
+    .v8-chat { height: calc(100vh - 100px) !important; }
+    .v8-page.lights-off .v8-vid { width: 94% !important; }
+    .v8-page.compare-mode .v8-vid { width: 92% !important; }
+    .v8-cmp { width: 92% !important; }
+    .v8-ft-right-card .v8-ftt { font-size: 0.82rem !important; }
+    .fsi, .fvi, .fei { padding: 8px 10px !important; }
+}
+/* reduced-motion: 尊重用户偏好 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+</head>
+<body>
+<div class="v8-page" id="v8Page">
+    <div class="v8-bg" id="v8Bg"><video autoplay muted loop playsinline src="assets/videos/bg-studio.mp4"></video></div>
+    <button class="v8-back" id="backBtn"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="v8-phase" id="phaseEl"><span class="v8-pd" id="phaseDot"></span><span id="phaseLabel">准备就绪</span></div>
+
+    <!-- 返回确认弹窗 -->
+    <div class="v8-back-modal" id="backModal">
+        <div class="v8-bm-card">
+            <div class="v8-bm-title">任务正在进行中</div>
+            <div class="v8-bm-desc">当前译制任务尚未完成，你想要：</div>
+            <div class="v8-bm-actions">
+                <button class="v8-bm-btn v8-bm-bg" id="backBgBtn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3V8L11 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/></svg>
+                    后台继续任务
+                </button>
+                <button class="v8-bm-btn v8-bm-stop" id="backStopBtn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/></svg>
+                    停止任务并返回
+                </button>
+                <button class="v8-bm-btn v8-bm-cancel" id="backCancelBtn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 背景同步层 + 视频小窗 -->
+    <div class="v8-bg-sync" id="v8BgSync"><div class="v8-bg-sync-inner" id="v8SyncInner">
+    <div class="v8-vid" id="v8Vid">
+        <video id="mainVideo" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" muted loop playsinline></video>
+        <div class="bs" id="burntSub"></div>
+        <div class="v8-subp" id="subPreview"><span class="so"></span><span class="st"></span></div>
+        <div class="v8-vp" id="voicePreview"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:4px"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>AI 配音中</div>
+        <div class="v8-ec" id="eraseOC"></div>
+        <div class="v8-flash" id="stepFlash"><div class="v8-flash-b"><span class="v8-flash-d" id="flashDot"></span><span id="flashText">步骤完成</span></div></div>
+        <span class="v8-vid-label" id="cmpResLabel" style="display:none;position:absolute;top:10px;left:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);color:#e2e8f0;font-weight:600">成片</span>
+        <div class="v8-scrub" id="scrub">
+            <button class="v8-sp" id="scrubPlay">
+                <svg class="sp-play" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                <svg class="sp-pause" width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:none"><rect x="2" y="1" width="3" height="10" rx=".5" fill="currentColor"/><rect x="7" y="1" width="3" height="10" rx=".5" fill="currentColor"/></svg>
+            </button>
+            <div class="v8-sb" id="scrubBar"><div class="v8-sf" id="scrubFill"></div><div class="v8-st" id="scrubThumb"></div></div>
+            <div class="v8-stm" id="scrubTime">00:00 / 01:30</div>
+        </div>
+    </div>
+    </div></div><!-- /v8-bg-sync -->
+
+    <!-- 聊天 -->
+    <div class="v8-chat" id="chatPanel">
+        <div class="v8-ch">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+                <h3>影视译制工作小组 <span class="mc">(5)</span></h3>
+                <button class="v8-ch-collapse" id="chatCollapseBtn" title="收起">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="v8-cf" id="chatFlow"></div>
+    </div>
+
+    <!-- 聊天FAB气泡 -->
+    <button class="v8-chat-fab" id="chatFab">
+        <div class="v8-fab-avatars">
+            <img src="assets/characters/linyuchen-director.png" alt="">
+        </div>
+        <span class="v8-fab-label">译制工坊</span>
+        <span class="v8-fab-badge" id="fabBadge">5</span>
+    </button>
+
+    <!-- 精调三卡片布局 -->
+    <div class="v8-ft-layout" id="ftLayout">
+        <div class="v8-ft-glow" id="ftGlow"></div>
+        <!-- 左上：视频卡片 -->
+        <div class="v8-ft-video-card" id="ftVideoCard"></div>
+
+        <!-- 左下：时间线卡片 -->
+        <div class="v8-ft-tl-card" id="ftTlCard">
+            <div class="v8-tlc">
+                <button class="v8-tlp" id="tlPlay"><svg class="tp-play" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg><svg class="tp-pause" width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:none"><rect x="2" y="1" width="3" height="10" rx=".5" fill="currentColor"/><rect x="7" y="1" width="3" height="10" rx=".5" fill="currentColor"/></svg></button>
+                <div class="v8-tlt" id="tlTime"><span class="cur">00:00</span> / 01:30</div>
+            </div>
+            <div class="v8-ruler" id="tlRuler"></div>
+            <div class="v8-tls" id="tlTracks">
+                <div class="v8-trk" data-track="erase"><span class="v8-trk-l">擦除</span><div class="v8-trk-c"></div></div>
+                <div class="v8-trk" data-track="subtitle"><span class="v8-trk-l">字幕</span><div class="v8-trk-c"></div></div>
+                <div class="v8-trk" data-track="voice"><span class="v8-trk-l">配音</span><div class="v8-trk-c"></div></div>
+                <div class="v8-ph" id="tlPlayhead"></div>
+            </div>
+        </div>
+
+        <!-- 右侧：精调面板卡片 -->
+        <div class="v8-ft-right-card" id="ftRightCard">
+            <div class="v8-ft-topbar">
+                <div class="v8-ft-topbar-left">
+                    <div><div class="v8-ftt" id="ftTitle">擦除精调</div><div class="v8-ftd" id="ftDesc">调整擦除区域和参数</div></div>
+                </div>
+            </div>
+            <div class="v8-ftp" id="ftPanel">
+                <div class="v8-tabs" id="ftTabs">
+                    <button class="v8-tab locked" id="tabErase" data-tab="erase">擦除</button>
+                    <button class="v8-tab locked" id="tabSubtitle" data-tab="subtitle">字幕</button>
+                    <button class="v8-tab locked" id="tabVoice" data-tab="voice">配音</button>
+                </div>
+                <div class="v8-ftc">
+                    <div class="v8-fp" data-fp="erase">
+                        <div class="v8-fsl">擦除区域列表 <span class="ft-count" id="eCount">8</span></div>
+                        <div id="eList"></div>
+                        <button class="v8-add" id="eAddBtn">+ 添加擦除区域</button>
+                        <div class="v8-done"><button class="v8-ft-cancel v8-cancel-fp" id="ftCancelErase"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>退出</button><button class="v8-done-btn v8-done-fp" id="ftDoneErase">完成擦除精调</button></div>
+                    </div>
+                    <div class="v8-fp" data-fp="subtitle">
+                        <div class="v8-ft-settings">
+                            <div class="v8-fsl" style="margin-bottom:12px">字幕设置</div>
+                            <div class="v8-fts-row">
+                                <span class="v8-fts-label">源语言</span>
+                                <select class="v8-fts-select" id="subSrcLang"><option value="auto" selected>自动检测</option><option>中文</option><option>英语</option><option>日语</option><option>韩语</option></select>
+                                <span class="v8-fts-label" style="margin-left:12px">目标语言</span>
+                                <select class="v8-fts-select" id="subTgtLang"><option selected>英语</option><option>日语</option><option>韩语</option><option>法语</option><option>德语</option></select>
+                            </div>
+                            <div class="v8-fts-row" style="margin-top:8px">
+                                <span class="v8-fts-label">字幕样式</span>
+                                <select class="v8-fts-select" id="subStyle" style="flex:1"><option selected>预设样式（双语白底黑字）</option><option>电影字幕</option><option>花字字幕</option><option>极简字幕</option></select>
+                            </div>
+                        </div>
+                        <div class="v8-fsl" style="margin-top:16px">字幕列表</div>
+                        <button class="v8-add" id="sAddBtn">+ 添加字幕</button>
+                        <div id="sList"></div>
+                        <div class="v8-done"><button class="v8-ft-cancel v8-cancel-fp" id="ftCancelSub"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>退出</button><button class="v8-done-btn v8-done-fp" id="ftDoneSub">完成字幕精调</button></div>
+                    </div>
+                    <div class="v8-fp" data-fp="voice">
+                        <div class="v8-ft-settings">
+                            <div class="v8-fsl" style="margin-bottom:12px">配音设置</div>
+                            <div class="v8-fts-row">
+                                <span class="v8-fts-label">音色</span>
+                                <select class="v8-fts-select" id="voiceType"><option selected>原声克隆</option><option>自然男声</option><option>自然女声</option></select>
+                            </div>
+                            <div class="v8-fts-row" style="margin-top:8px">
+                                <span class="v8-fts-label">语速</span>
+                                <select class="v8-fts-select" id="voiceSpeed"><option selected>自动</option><option>稍快</option><option>稍慢</option></select>
+                                <span class="v8-fts-label" style="margin-left:12px">情绪</span>
+                                <select class="v8-fts-select" id="voiceEmotion"><option selected>自然</option><option>热情</option><option>沉稳</option><option>活泼</option></select>
+                            </div>
+                        </div>
+                        <div class="v8-fsl" style="margin-top:16px">配音列表</div>
+                        <div id="vList"></div>
+                        <button class="v8-add" id="vAddBtn">+ 添加配音</button>
+                        <div class="v8-done"><button class="v8-ft-cancel v8-cancel-fp" id="ftCancelVoice"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>退出</button><button class="v8-done-btn v8-done-fp" id="ftDoneVoice">完成配音精调</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 暗幕 -->
+    <div class="v8-dim" id="dimmer">
+        <div class="v8-dim-bg" id="dimBg"></div>
+        <div class="v8-dim-acts">
+            <button class="v8-dbtn pri" onclick="alert('导出中...')"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2V9M8 9L11 6M8 9L5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13V11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>导出视频</button>
+            <button class="v8-dbtn" id="dimCmpBtn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="3" width="5" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>对比</button>
+            <button class="v8-dbtn" id="dimRefBtn">再次精调</button>
+            <button class="v8-dbtn" id="dimLightBtn">开灯</button>
+        </div>
+    </div>
+
+    <!-- 对比 -->
+    <div class="v8-cmp" id="cmpOrig"><video id="cmpVideo" src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" muted loop playsinline></video><span class="v8-cmp-l">原片</span></div>
+</div>
+
+<!-- COS JS SDK + API Client + Tracker -->
+<script async src="https://cdn.jsdelivr.net/npm/cos-js-sdk-v5@1.8.5/dist/cos-js-sdk-v5.min.js"></script>
+<script src="api-client.js"></script>
+<script src="tracker.js"></script>
+<script src="survey.js"></script>
+<script src="task-state.js"></script>
+<script src="translate-v8.js"></script>
+</body>
+</html>

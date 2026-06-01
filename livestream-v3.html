@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo · 直播剪辑</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;--accent:#f97316;--accent2:#fb923c;--border:rgba(255,255,255,0.06);--r:14px}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text)}
+button{cursor:pointer;font-family:inherit;border:none}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+
+/* === 精调布局 === */
+.ls-layout{display:grid;width:100%;height:100vh;grid-template-columns:1fr 340px;grid-template-rows:1fr 200px;gap:8px;padding:8px}
+
+/* 录制状态徽章（移入时间轴控制条） */
+.ls-live-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);font-size:.72rem;font-weight:600;color:#f87171}
+.ls-live-dot{width:6px;height:6px;border-radius:50%;background:#ef4444;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{opacity:.6;box-shadow:0 0 0 5px rgba(239,68,68,0)}}
+.ls-timer{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#fca5a5}
+
+/* === 左上：双视频卡片 === */
+.ls-videos{grid-column:1;grid-row:1;border-radius:var(--r);background:#111318;border:1px solid var(--border);overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ls-vid-panel{position:relative;background:#0a0a16;overflow:hidden;display:flex;flex-direction:column}
+.ls-vid-panel+.ls-vid-panel{border-left:1px solid var(--border)}
+.ls-vid-panel video,.ls-vid-panel canvas{flex:1;width:100%;min-height:0;object-fit:contain;display:block;background:#000}
+.ls-vid-label{position:absolute;top:8px;left:8px;padding:3px 10px;border-radius:6px;font-size:.65rem;font-weight:700;z-index:2}
+.ls-vid-label--live{background:rgba(239,68,68,0.85);color:#fff;display:flex;align-items:center;gap:5px}
+.ls-vid-label--live .ld{width:5px;height:5px;border-radius:50%;background:#fff;animation:pulse 1.5s infinite}
+.ls-vid-label--preview{background:rgba(59,130,246,0.85);color:#fff}
+.ls-vid-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:.75rem}
+.ls-vid-empty svg{opacity:.3}
+/* 音量 */
+.ls-vol{position:absolute;bottom:8px;right:8px;display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,0.6);z-index:3}
+.ls-vol svg{flex-shrink:0}
+.ls-vol input[type=range]{width:50px;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,0.2);outline:none}
+.ls-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:var(--accent);cursor:pointer}
+/* 预览控制条 */
+.ls-pv-ctrl{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:6px 10px;background:linear-gradient(transparent,rgba(0,0,0,0.7));z-index:4}
+.ls-pv-ctrl .ls-vol{position:static;padding:0;background:none}
+.ls-pv-play{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.ls-pv-play:hover{background:rgba(255,255,255,0.2)}
+.ls-pv-play.playing svg{display:none}
+.ls-pv-play.playing::after{content:'❚❚';font-size:8px;letter-spacing:1px;color:#e2e8f0}
+.ls-pv-time{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#94a3b8}
+.ls-pv-spacer{flex:1}
+
+/* === 左下：时间轴卡片 === */
+.ls-timeline{grid-column:1;grid-row:2;border-radius:var(--r);background:#111318;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ls-tl-ctrl{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ls-tl-play{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ls-tl-play:hover{background:rgba(255,255,255,0.1)}
+.ls-tl-play.playing svg{display:none}
+.ls-tl-play.playing::after{content:'❚❚';font-size:9px;letter-spacing:1px;color:var(--text)}
+.ls-tl-time{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text2)}
+.ls-tl-spacer{flex:1}
+.ls-tl-btn{padding:5px 12px;border-radius:7px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text2);font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:5px;transition:all .2s}
+.ls-tl-btn:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+.ls-tl-btn--in:hover,.ls-tl-btn--in.active{color:#22c55e;border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.08)}
+.ls-tl-btn--out:hover,.ls-tl-btn--out.active{color:#ef4444;border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.08)}
+.ls-tl-btn--gen{background:linear-gradient(135deg,#f97316,#fb923c);border:none;color:#fff;font-weight:700}
+.ls-tl-btn--gen:hover{filter:brightness(1.1)}
+.ls-tl-btn--gen:disabled{opacity:.4;pointer-events:none}
+
+/* 轨道区 */
+.ls-tracks{flex:1;display:flex;min-height:0;overflow:hidden;position:relative}
+.ls-trk-labels{width:54px;flex-shrink:0;display:flex;flex-direction:column;padding-top:20px}
+.ls-trk-label{height:32px;display:flex;align-items:center;gap:4px;justify-content:flex-end;padding-right:8px;font-size:.6rem;font-weight:600;color:var(--text3);margin-bottom:4px}
+.ls-trk-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.ls-trk-dot--live{background:#ef4444;box-shadow:0 0 4px rgba(239,68,68,0.4)}
+.ls-trk-dot--clip{background:#3b82f6;box-shadow:0 0 4px rgba(59,130,246,0.4)}
+/* 可滚动区 */
+.ls-trk-scroll{flex:1;overflow-x:auto;overflow-y:hidden;position:relative}
+.ls-trk-scroll::-webkit-scrollbar{height:6px}
+.ls-trk-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:3px}
+.ls-trk-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+.ls-trk-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.18)}
+.ls-trk-content{position:relative;min-width:100%;height:100%}
+/* 时间刻度 */
+.ls-trk-ruler{height:18px;position:relative;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ls-trk-tick{position:absolute;top:0;height:100%;display:flex;align-items:flex-end;padding-bottom:2px}
+.ls-trk-tick::before{content:'';position:absolute;left:0;top:2px;width:1px;height:6px;background:rgba(255,255,255,0.12)}
+.ls-trk-tick span{font-size:.5rem;font-family:'JetBrains Mono',monospace;color:var(--text3);padding-left:3px;white-space:nowrap}
+/* 轨道行 */
+.ls-trk-row{height:32px;position:relative;margin-bottom:4px;background:rgba(255,255,255,0.02);border-radius:5px;overflow:visible}
+/* 直播轨已播放区域 */
+.ls-trk-played{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,rgba(239,68,68,0.08),rgba(239,68,68,0.15));border-radius:5px;pointer-events:none}
+/* 直播轨末端脉冲动画 — 表示直播正在继续 */
+.ls-trk-played::after{content:'';position:absolute;top:2px;bottom:2px;right:0;width:3px;border-radius:2px;background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.6);animation:trkPulse 1.2s infinite}
+@keyframes trkPulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(239,68,68,0.4)}50%{opacity:.5;box-shadow:0 0 8px rgba(239,68,68,0.8)}}
+/* 剪辑片段 */
+.ls-trk-seg{position:absolute;top:3px;bottom:3px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:600;color:rgba(255,255,255,0.8);cursor:pointer;transition:all .2s;overflow:hidden;white-space:nowrap;padding:0 4px}
+.ls-trk-seg--clip{background:rgba(59,130,246,0.35);border:1px solid rgba(59,130,246,0.5)}
+.ls-trk-seg--clip:hover{background:rgba(59,130,246,0.5)}
+.ls-trk-seg--clip.active{background:rgba(59,130,246,0.55);border-color:#3b82f6;box-shadow:0 0 8px rgba(59,130,246,0.3)}
+/* 入/出点 */
+.ls-trk-inpoint{position:absolute;top:-2px;bottom:-2px;width:3px;background:#22c55e;border-radius:2px;z-index:6}
+.ls-trk-outpoint{position:absolute;top:-2px;bottom:-2px;width:3px;background:#ef4444;border-radius:2px;z-index:6}
+.ls-trk-selection{position:absolute;top:0;bottom:0;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);border-radius:4px;z-index:4;pointer-events:none}
+/* 播放头 — 穿透所有轨道，可拖拽，大热区 */
+.ls-trk-playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:8;cursor:ew-resize;pointer-events:auto}
+.ls-trk-playhead::before{content:'';position:absolute;top:-2px;left:-6px;width:14px;height:14px;border-radius:3px 3px 50% 50%;background:var(--accent);cursor:ew-resize}
+/* 拖拽热区（透明的宽区域，更容易点中） */
+.ls-trk-playhead::after{content:'';position:absolute;top:0;bottom:0;left:-10px;width:22px;cursor:ew-resize}
+.ls-trk-playhead.dragging{z-index:20}
+.ls-trk-playhead.dragging::before{transform:scale(1.2);box-shadow:0 0 8px rgba(249,115,22,0.5)}
+
+/* 回到直播按钮 */
+.ls-tl-btn--live-now{color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);animation:liveNowPulse 2s infinite}
+.ls-tl-btn--live-now:hover{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.5)}
+@keyframes liveNowPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(239,68,68,0.2)}}
+
+/* === 右侧：片段列表 === */
+.ls-clips{grid-column:2;grid-row:1/3;border-radius:var(--r);background:#111318;border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.ls-clips-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ls-clips-title{font-size:.9rem;font-weight:700;color:var(--text)}
+.ls-clips-sub{font-size:.68rem;color:var(--text3);margin-top:2px}
+.ls-clip-list{flex:1;overflow-y:auto;padding:8px}
+.ls-clip-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--text3);font-size:.78rem;text-align:center;padding:20px}
+.ls-clip-empty svg{opacity:.25}
+
+/* 片段卡 */
+.ls-clip{display:flex;gap:10px;padding:8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;margin-bottom:4px;animation:clipIn .3s ease}
+@keyframes clipIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ls-clip:hover{background:rgba(255,255,255,0.03);border-color:var(--border)}
+.ls-clip.active{background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.25)}
+.ls-clip-num{width:24px;height:24px;border-radius:6px;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;align-self:center}
+.ls-clip-info{flex:1;min-width:0}
+.ls-clip-name{font-size:.75rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ls-clip-meta{font-size:.62rem;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.ls-clip-dur{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text2);flex-shrink:0;align-self:center}
+.ls-clip-acts{display:flex;gap:4px;flex-shrink:0;align-self:center}
+.ls-clip-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ls-clip-btn:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+.ls-clip-btn--del:hover{color:#ef4444;border-color:rgba(239,68,68,0.3)}
+
+/* 底部导出 */
+.ls-clips-bottom{padding:10px 14px;border-top:1px solid var(--border);flex-shrink:0}
+.ls-export-btn{width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#1e293b,#334155);color:#fff;font-size:.82rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
+.ls-export-btn:hover{filter:brightness(1.15)}
+.ls-export-btn:disabled{opacity:.4;pointer-events:none}
+
+/* 响应式 */
+@media(max-width:900px){
+    .ls-layout{grid-template-columns:1fr;grid-template-rows:auto 160px auto}
+    .ls-clips{grid-column:1;grid-row:3;max-height:40vh}
+    .ls-videos{grid-template-columns:1fr}
+}
+
+</style>
+</head>
+<body>
+
+<!-- 三栏布局 -->
+<div class="ls-layout">
+
+    <!-- 左上：双视频 -->
+    <div class="ls-videos" id="videosCard">
+        <!-- 直播预览 -->
+        <div class="ls-vid-panel" id="livePanel">
+            <video id="liveVideo" muted playsinline></video>
+            <div class="ls-vid-label ls-vid-label--live"><span class="ld"></span>直播预览</div>
+            <div class="ls-vol" id="liveVol">
+                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 5.5H4L7 3V11L4 8.5H2V5.5Z" fill="#94a3b8"/><path d="M9.5 4.5C10.3 5.3 10.8 6.5 10.8 7C10.8 7.5 10.3 8.7 9.5 9.5" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/></svg>
+                <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0">
+            </div>
+        </div>
+        <!-- 片段预览 -->
+        <div class="ls-vid-panel" id="previewPanel">
+            <video id="previewVideo" playsinline style="display:none"></video>
+            <canvas id="previewCanvas" style="display:none"></canvas>
+            <div class="ls-vid-label ls-vid-label--preview" style="display:none" id="previewLabel">▶ 片段预览</div>
+            <!-- 预览控制条 -->
+            <div class="ls-pv-ctrl" id="pvCtrl" style="display:none">
+                <button class="ls-pv-play" id="pvPlayBtn" title="播放/暂停"><svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg></button>
+                <span class="ls-pv-time" id="pvTime">0:00</span>
+                <div class="ls-pv-spacer"></div>
+                <div class="ls-vol" id="pvVol">
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2 5.5H4L7 3V11L4 8.5H2V5.5Z" fill="#94a3b8"/><path d="M9.5 4.5C10.3 5.3 10.8 6.5 10.8 7C10.8 7.5 10.3 8.7 9.5 9.5" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    <input type="range" id="pvVolSlider" min="0" max="1" step="0.05" value="0.5">
+                </div>
+            </div>
+            <div class="ls-vid-empty" id="previewEmpty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M8 5L19 12L8 19V5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                <span>剪辑片段后可在此预览</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 左下：时间轴 -->
+    <div class="ls-timeline" id="tlCard">
+        <div class="ls-tl-ctrl">
+            <button class="ls-tl-play" id="playBtn" title="播放/暂停"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg></button>
+            <span class="ls-tl-time" id="tlTime">00:00 / 00:00</span>
+            <div class="ls-live-badge" style="margin-left:8px"><span class="ls-live-dot"></span><span>录制中</span><span class="ls-timer" id="recTimer">00:00:00</span></div>
+            <div class="ls-tl-spacer"></div>
+            <button class="ls-tl-btn ls-tl-btn--live-now" id="btnLiveNow" style="display:none">● 回到直播</button>
+            <button class="ls-tl-btn ls-tl-btn--in" id="btnIn">入点 [I]</button>
+            <button class="ls-tl-btn ls-tl-btn--out" id="btnOut">出点 [O]</button>
+            <button class="ls-tl-btn ls-tl-btn--gen" id="btnGen" disabled>生成片段</button>
+        </div>
+        <div class="ls-tracks" id="tracksArea">
+            <div class="ls-trk-labels">
+                <div class="ls-trk-label"><span class="ls-trk-dot ls-trk-dot--live"></span>直播</div>
+                <div class="ls-trk-label"><span class="ls-trk-dot ls-trk-dot--clip"></span>剪辑</div>
+            </div>
+            <div class="ls-trk-scroll" id="trkScroll">
+                <div class="ls-trk-content" id="trkContent">
+                    <!-- 时间刻度 -->
+                    <div class="ls-trk-ruler" id="trkRuler"></div>
+                    <!-- 直播轨 -->
+                    <div class="ls-trk-row" id="trkLiveRow">
+                        <div class="ls-trk-played" id="trkPlayed"></div>
+                    </div>
+                    <!-- 剪辑轨 -->
+                    <div class="ls-trk-row" id="trkClipRow"></div>
+                    <!-- 播放头 -->
+                    <div class="ls-trk-playhead" id="tlPlayhead"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：片段列表 -->
+    <div class="ls-clips" id="clipsPanel">
+        <div class="ls-clips-head">
+            <div class="ls-clips-title">视频片段</div>
+            <div class="ls-clips-sub" id="clipsSub">标记入点和出点生成剪辑片段</div>
+        </div>
+        <div class="ls-clip-list" id="clipList">
+            <div class="ls-clip-empty" id="clipEmpty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M15 10L19.553 7.724A1 1 0 0121 8.618V15.382A1 1 0 0119.553 16.276L15 14M5 18H13C14.1046 18 15 17.1046 15 16V8C15 6.89543 14.1046 6 13 6H5C3.89543 6 3 6.89543 3 8V16C3 17.1046 3.89543 18 5 18Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>播放视频，用 <strong>[I]</strong> 标记入点<br><strong>[O]</strong> 标记出点，生成剪辑片段</span>
+            </div>
+        </div>
+        <div class="ls-clips-bottom">
+            <button class="ls-export-btn" id="exportBtn" disabled>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2V9M8 9L11 6M8 9L5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V13C3 13.55 3.45 14 4 14H12C12.55 14 13 13.55 13 13V11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                导出全部片段
+            </button>
+        </div>
+    </div>
+</div>
+
+<script async src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+<script src="livestream-v3.js"></script>
+</body>
+</html>

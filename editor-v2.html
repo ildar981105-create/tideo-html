@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精调编辑器 — Tideo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="editor-v2.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="ev2-body">
+
+    <!-- ===== Top Bar ===== -->
+    <header class="ev2-topbar">
+        <a href="translate-v8.html" class="ev2-back">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            返回
+        </a>
+        <div class="ev2-topbar-center">
+            <span class="ev2-filename-label">精调编辑</span>
+            <span class="ev2-filename-sep">—</span>
+            <span class="ev2-filename">demo_video.mp4</span>
+        </div>
+        <div class="ev2-topbar-right">
+            <button class="ev2-topbar-btn" id="panelToggle" title="收起/展开面板">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M10 2V14" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+            <button class="ev2-btn-export">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2V9M8 9L11 6M8 9L5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11V13C3 13.5523 3.44772 14 4 14H12C12.5523 14 13 13.5523 13 13V11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                导出
+            </button>
+            <a href="result.html" class="ev2-btn-result">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M5.5 8L7 9.5L10.5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                完成精调
+            </a>
+        </div>
+    </header>
+
+    <!-- ===== Main: Video + Panel ===== -->
+    <div class="ev2-main">
+
+        <!-- Left: Video + Tabs + Timeline -->
+        <div class="ev2-canvas-area">
+
+            <!-- Video -->
+            <div class="ev2-video-wrap">
+                <div class="ev2-video-container">
+                    <canvas id="editorCanvas"></canvas>
+
+                    <!-- Erase overlay -->
+                    <div class="ev2-overlay ev2-erase-overlay" id="eraseOverlay">
+                        <div class="ev2-erase-box" style="left:8%;bottom:6%;width:84%;height:12%;">
+                            <span class="ev2-erase-box-label">字幕区域 1</span>
+                            <div class="ev2-erase-handle ev2-erase-handle--tl"></div>
+                            <div class="ev2-erase-handle ev2-erase-handle--tr"></div>
+                            <div class="ev2-erase-handle ev2-erase-handle--bl"></div>
+                            <div class="ev2-erase-handle ev2-erase-handle--br"></div>
+                        </div>
+                    </div>
+
+                    <!-- Subtitle overlay -->
+                    <div class="ev2-overlay ev2-subtitle-overlay" id="subtitleOverlay" style="display:none;">
+                        <div class="ev2-subtitle-preview">
+                            <span class="ev2-sub-en">The future of AI video translation is here</span>
+                            <span class="ev2-sub-zh">AI 视频翻译的未来已来</span>
+                        </div>
+                    </div>
+
+                    <!-- Voice wave overlay -->
+                    <div class="ev2-overlay ev2-voice-overlay" id="voiceOverlay" style="display:none;">
+                        <div class="ev2-voice-wave" id="voiceWave"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Function Tabs -->
+            <div class="ev2-func-tabs" id="funcTabs">
+                <button class="ev2-func-tab active" data-tab="erase">
+                    <span class="tab-dot"></span>
+                    擦除字幕
+                </button>
+                <button class="ev2-func-tab" data-tab="subtitle">
+                    <span class="tab-dot"></span>
+                    字幕编辑
+                </button>
+                <button class="ev2-func-tab" data-tab="voice">
+                    <span class="tab-dot"></span>
+                    配音调整
+                </button>
+            </div>
+
+            <!-- Bottom Timeline -->
+            <div class="ev2-timeline" id="timeline">
+                <!-- Ruler -->
+                <div class="ev2-tl-ruler" id="tlRuler">
+                    <div class="ev2-tl-ruler-marks" id="rulerMarks"></div>
+                </div>
+
+                <!-- Tracks -->
+                <div class="ev2-tl-tracks" id="tlTracks">
+                    <!-- Erase track -->
+                    <div class="ev2-tl-track" data-track="erase">
+                        <div class="ev2-tl-track-bg"></div>
+                        <div class="ev2-tl-segment ev2-tl-segment--erase" style="left:0%;width:100%;">
+                            <span class="ev2-tl-seg-label">全程擦除</span>
+                        </div>
+                    </div>
+                    <!-- Subtitle track -->
+                    <div class="ev2-tl-track" data-track="subtitle">
+                        <div class="ev2-tl-track-bg"></div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:0%;width:6%;">
+                            <span class="ev2-tl-seg-label">S1</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:8%;width:10%;">
+                            <span class="ev2-tl-seg-label">S2</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:20%;width:12%;">
+                            <span class="ev2-tl-seg-label">S3</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:35%;width:14%;">
+                            <span class="ev2-tl-seg-label">S4</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:52%;width:10%;">
+                            <span class="ev2-tl-seg-label">S5</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:65%;width:15%;">
+                            <span class="ev2-tl-seg-label">S6</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--subtitle" style="left:83%;width:12%;">
+                            <span class="ev2-tl-seg-label">S7</span>
+                        </div>
+                    </div>
+                    <!-- Voice track -->
+                    <div class="ev2-tl-track" data-track="voice">
+                        <div class="ev2-tl-track-bg"></div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:0%;width:6%;">
+                            <span class="ev2-tl-seg-label">V1</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:8%;width:10%;">
+                            <span class="ev2-tl-seg-label">V2</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:20%;width:12%;">
+                            <span class="ev2-tl-seg-label">V3</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:35%;width:14%;">
+                            <span class="ev2-tl-seg-label">V4</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:52%;width:10%;">
+                            <span class="ev2-tl-seg-label">V5</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:65%;width:15%;">
+                            <span class="ev2-tl-seg-label">V6</span>
+                        </div>
+                        <div class="ev2-tl-segment ev2-tl-segment--voice" style="left:83%;width:12%;">
+                            <span class="ev2-tl-seg-label">V7</span>
+                        </div>
+                    </div>
+
+                    <!-- Playhead -->
+                    <div class="ev2-tl-playhead" id="tlPlayhead" style="left:0%;">
+                        <div class="ev2-tl-playhead-head"></div>
+                        <div class="ev2-tl-playhead-line"></div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="ev2-tl-controls">
+                    <button class="ev2-tl-play playing" id="tlPlay">
+                        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 1.5L12 7L3 12.5V1.5Z" fill="currentColor"/></svg>
+                    </button>
+                    <span class="ev2-tl-time" id="tlTime">
+                        <span class="current">00:00</span> / 02:34
+                    </span>
+                    <div class="ev2-tl-zoom">
+                        <button class="ev2-tl-zoom-btn" id="zoomOut">−</button>
+                        <span class="ev2-tl-zoom-label">100%</span>
+                        <button class="ev2-tl-zoom-btn" id="zoomIn">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <aside class="ev2-panel" id="rightPanel">
+            <!-- Erase Panel -->
+            <div class="ev2-panel-content active" id="panelErase">
+                <div class="ev2-panel-header">
+                    <div class="ev2-panel-icon ev2-panel-icon--red">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M16 4L8 12L4 16H10L18 8L16 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 18H18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <div>
+                        <h3>擦除字幕</h3>
+                        <p>AI 检测到 1 个字幕区域</p>
+                    </div>
+                </div>
+                <div class="ev2-panel-body">
+                    <div class="ev2-region-list">
+                        <div class="ev2-region-card active">
+                            <span class="ev2-region-icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.5 2"/></svg>
+                            </span>
+                            <div class="ev2-region-info">
+                                <span class="ev2-region-title">底部字幕</span>
+                                <span class="ev2-region-meta">x:8% y:82% w:84% h:12%</span>
+                            </div>
+                            <button class="ev2-region-check checked">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7L6 10L11 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ev2-mode-row">
+                        <label>擦除模式</label>
+                        <div class="ev2-mode-chips">
+                            <button class="ev2-mode-chip active">AI 自动</button>
+                            <button class="ev2-mode-chip">手动调整</button>
+                        </div>
+                    </div>
+                    <div class="ev2-config-group">
+                        <span class="ev2-config-label">擦除质量</span>
+                        <div class="ev2-config-grid">
+                            <div class="ev2-config-field">
+                                <label>质量</label>
+                                <select><option>高质量</option><option>标准</option><option>快速</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>填充模式</label>
+                                <select><option>AI 修复</option><option>纯色填充</option><option>模糊</option></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtitle Panel -->
+            <div class="ev2-panel-content" id="panelSubtitle">
+                <div class="ev2-panel-header">
+                    <div class="ev2-panel-icon ev2-panel-icon--blue">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 11H14M6 13H11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div>
+                        <h3>字幕编辑</h3>
+                        <p>点击字幕可编辑内容</p>
+                    </div>
+                </div>
+                <div class="ev2-panel-body">
+                    <div class="ev2-config-group">
+                        <div class="ev2-config-grid">
+                            <div class="ev2-config-field">
+                                <label>字幕语言</label>
+                                <select><option>英语</option><option>中文</option><option>日语</option><option>韩语</option><option>法语</option><option>德语</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>显示样式</label>
+                                <select><option>双语对照</option><option>仅译文</option><option>仅原文</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>字体大小</label>
+                                <select><option>中</option><option>小</option><option>大</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>位置</label>
+                                <select><option>底部居中</option><option>顶部居中</option></select>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="ev2-config-label">字幕列表</span>
+                    <div class="ev2-sub-list">
+                        <div class="ev2-sub-item active">
+                            <span class="ev2-sub-time">00:03</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">大家好，欢迎来到今天的分享</span>
+                                <span class="ev2-sub-trans">Hello everyone, welcome to today's sharing</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">00:09</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">今天我们来聊一聊 AI 视频翻译</span>
+                                <span class="ev2-sub-trans">Today let's talk about AI video translation</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">00:16</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">这项技术可以自动擦除原有字幕</span>
+                                <span class="ev2-sub-trans">This technology can automatically erase subtitles</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">00:24</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">并且重新生成目标语言的配音</span>
+                                <span class="ev2-sub-trans">And regenerate dubbing in the target language</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">00:38</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">整个流程完全自动化</span>
+                                <span class="ev2-sub-trans">The entire process is fully automated</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">00:55</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">声音克隆让配音听起来非常自然</span>
+                                <span class="ev2-sub-trans">Voice cloning makes dubbing sound very natural</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-sub-item">
+                            <span class="ev2-sub-time">01:15</span>
+                            <div class="ev2-sub-texts">
+                                <span class="ev2-sub-orig">希望这个功能对大家有帮助</span>
+                                <span class="ev2-sub-trans">Hope this feature is helpful to everyone</span>
+                            </div>
+                            <button class="ev2-sub-edit-btn">
+                                <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voice Panel -->
+            <div class="ev2-panel-content" id="panelVoice">
+                <div class="ev2-panel-header">
+                    <div class="ev2-panel-icon ev2-panel-icon--purple">
+                        <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 3V13M7 7V9M13 5V11M4 9V7M16 8V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </div>
+                    <div>
+                        <h3>配音调整</h3>
+                        <p>AI 声音克隆配音</p>
+                    </div>
+                </div>
+                <div class="ev2-panel-body">
+                    <div class="ev2-config-group">
+                        <div class="ev2-config-grid">
+                            <div class="ev2-config-field">
+                                <label>声音风格</label>
+                                <select><option>克隆原声</option><option>自然男声 A</option><option>自然男声 B</option><option>自然女声 A</option><option>自然女声 B</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>语速</label>
+                                <select><option>自动匹配</option><option>稍快</option><option>稍慢</option><option>正常</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>音调偏移</label>
+                                <select><option>0 (原始)</option><option>+1</option><option>+2</option><option>-1</option><option>-2</option></select>
+                            </div>
+                            <div class="ev2-config-field">
+                                <label>背景音保留</label>
+                                <select><option>保留原声背景</option><option>静音</option><option>降低 50%</option></select>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="ev2-config-label">配音片段</span>
+                    <div class="ev2-voice-list">
+                        <div class="ev2-voice-item active">
+                            <span class="ev2-voice-time">00:03</span>
+                            <span class="ev2-voice-text">Hello everyone, welcome to today's sharing</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">00:09</span>
+                            <span class="ev2-voice-text">Today let's talk about AI video translation</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">00:16</span>
+                            <span class="ev2-voice-text">This technology can automatically erase subtitles</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">00:24</span>
+                            <span class="ev2-voice-text">And regenerate dubbing in the target language</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">00:38</span>
+                            <span class="ev2-voice-text">The entire process is fully automated</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">00:55</span>
+                            <span class="ev2-voice-text">Voice cloning makes dubbing sound very natural</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <div class="ev2-voice-item">
+                            <span class="ev2-voice-time">01:15</span>
+                            <span class="ev2-voice-text">Hope this feature is helpful to everyone</span>
+                            <button class="ev2-voice-play">
+                                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M3 1.5L10 6L3 10.5V1.5Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+    (function() {
+        /* ===== State ===== */
+        let playing = true;
+        let videoTime = 0;
+        const videoDuration = 154; // 2:34
+        let animFrame = null;
+        let activeTab = 'erase';
+
+        /* ===== Elements ===== */
+        const canvas = document.getElementById('editorCanvas');
+        const ctx = canvas.getContext('2d');
+        const eraseOverlay = document.getElementById('eraseOverlay');
+        const subtitleOverlay = document.getElementById('subtitleOverlay');
+        const voiceOverlay = document.getElementById('voiceOverlay');
+        const rightPanel = document.getElementById('rightPanel');
+        const tlPlayhead = document.getElementById('tlPlayhead');
+        const tlTracks = document.getElementById('tlTracks');
+
+        /* ===== Canvas ===== */
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = container.clientWidth * dpr;
+            canvas.height = container.clientHeight * dpr;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawFrame(t) {
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.width / dpr;
+            const h = canvas.height / dpr;
+            ctx.save();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+
+            const hue = (t * 6) % 360;
+            const grd = ctx.createLinearGradient(0, 0, w, h);
+            grd.addColorStop(0, `hsl(${hue}, 35%, 10%)`);
+            grd.addColorStop(0.5, `hsl(${(hue+50)%360}, 30%, 14%)`);
+            grd.addColorStop(1, `hsl(${(hue+120)%360}, 25%, 8%)`);
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, w, h);
+
+            // Silhouette
+            const cx = w * 0.5, cy = h * 0.4;
+            ctx.globalAlpha = 0.2;
+            ctx.beginPath();
+            ctx.arc(cx, cy - 30, 28, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${hue+180}, 20%, 28%)`;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx, cy + 30, 36, 50, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Particles
+            ctx.globalAlpha = 0.12;
+            for (let i = 0; i < 10; i++) {
+                const px = (Math.sin(t * 0.25 + i * 2) * 0.4 + 0.5) * w;
+                const py = (Math.cos(t * 0.18 + i * 2.3) * 0.4 + 0.5) * h;
+                ctx.beginPath();
+                ctx.arc(px, py, 1.5 + Math.sin(t * 0.5 + i), 0, Math.PI * 2);
+                ctx.fillStyle = '#818cf8';
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function tick() {
+            if (playing) {
+                videoTime += 1 / 60;
+                if (videoTime >= videoDuration) videoTime = 0;
+            }
+            drawFrame(videoTime);
+            updateUI();
+            animFrame = requestAnimationFrame(tick);
+        }
+
+        function updateUI() {
+            const pct = (videoTime / videoDuration) * 100;
+            tlPlayhead.style.left = pct + '%';
+
+            const m = Math.floor(videoTime / 60);
+            const s = Math.floor(videoTime % 60);
+            document.getElementById('tlTime').innerHTML =
+                `<span class="current">${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</span> / 02:34`;
+        }
+
+        /* ===== Timeline ruler ===== */
+        function buildRuler() {
+            const marks = document.getElementById('rulerMarks');
+            marks.innerHTML = '';
+            const totalSec = videoDuration;
+            const step = 15; // every 15s
+            for (let s = 0; s <= totalSec; s += step) {
+                const pct = (s / totalSec) * 100;
+                const mark = document.createElement('div');
+                mark.className = 'ev2-tl-ruler-mark' + (s % 60 === 0 ? ' major' : '');
+                mark.style.left = pct + '%';
+                const m = Math.floor(s / 60);
+                const sec = s % 60;
+                mark.innerHTML = `<span class="tick-label">${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}</span><span class="tick"></span>`;
+                marks.appendChild(mark);
+            }
+        }
+        buildRuler();
+
+        /* ===== Voice wave bars ===== */
+        function initVoiceWave() {
+            const wave = document.getElementById('voiceWave');
+            let html = '';
+            for (let i = 0; i < 40; i++) {
+                const h = 8 + Math.random() * 28;
+                const delay = (i * 0.05).toFixed(2);
+                html += `<div class="ev2-vw-bar" style="height:${h}px;animation-delay:${delay}s;"></div>`;
+            }
+            wave.innerHTML = html;
+        }
+        initVoiceWave();
+
+        /* ===== Tab switching ===== */
+        function switchTab(tab) {
+            activeTab = tab;
+
+            // Tabs
+            document.querySelectorAll('.ev2-func-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+
+            // Panels
+            document.querySelectorAll('.ev2-panel-content').forEach(p => p.classList.remove('active'));
+            const panelMap = { erase: 'panelErase', subtitle: 'panelSubtitle', voice: 'panelVoice' };
+            document.getElementById(panelMap[tab]).classList.add('active');
+
+            // Overlays
+            eraseOverlay.style.display = tab === 'erase' ? '' : 'none';
+            subtitleOverlay.style.display = tab === 'subtitle' ? '' : 'none';
+            voiceOverlay.style.display = tab === 'voice' ? '' : 'none';
+
+            // Highlight corresponding track
+            document.querySelectorAll('.ev2-tl-track').forEach(track => {
+                track.style.opacity = track.dataset.track === tab ? '1' : '0.4';
+            });
+        }
+
+        document.querySelectorAll('.ev2-func-tab').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        // Initial state
+        switchTab('erase');
+
+        /* ===== Play/Pause ===== */
+        document.getElementById('tlPlay').addEventListener('click', () => {
+            playing = !playing;
+            document.getElementById('tlPlay').classList.toggle('playing', playing);
+        });
+
+        /* ===== Timeline click-to-seek ===== */
+        tlTracks.addEventListener('click', e => {
+            const rect = tlTracks.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            videoTime = pct * videoDuration;
+        });
+
+        /* ===== Panel toggle ===== */
+        document.getElementById('panelToggle').addEventListener('click', () => {
+            rightPanel.classList.toggle('collapsed');
+        });
+
+        /* ===== Mode chips ===== */
+        document.querySelectorAll('.ev2-mode-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chip.parentElement.querySelectorAll('.ev2-mode-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            });
+        });
+
+        /* ===== Region check toggle ===== */
+        document.querySelectorAll('.ev2-region-check').forEach(btn => {
+            btn.addEventListener('click', () => btn.classList.toggle('checked'));
+        });
+
+        /* ===== Keyboard shortcuts ===== */
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                playing = !playing;
+                document.getElementById('tlPlay').classList.toggle('playing', playing);
+            }
+            if (e.code === 'Digit1') switchTab('erase');
+            if (e.code === 'Digit2') switchTab('subtitle');
+            if (e.code === 'Digit3') switchTab('voice');
+            if (e.code === 'ArrowLeft') { videoTime = Math.max(0, videoTime - 5); }
+            if (e.code === 'ArrowRight') { videoTime = Math.min(videoDuration, videoTime + 5); }
+            if (e.code === 'Escape') rightPanel.classList.toggle('collapsed');
+        });
+
+        /* ===== Start ===== */
+        tick();
+    })();
+    </script>
+</body>
+</html>

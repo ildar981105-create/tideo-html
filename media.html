@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>素材管理 — Tideo</title>
+    <script>
+    // 最早的阻塞脚本：防止主题切换时闪烁
+    (function(){
+        var t = localStorage.getItem('tideo_theme');
+        if (t === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+        } else if (t === 'light' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            // 无保存值且系统非亮色 → 暗色
+            document.documentElement.removeAttribute('data-theme');
+        }
+    })();
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+    /* ===== 素材管理页专属样式 ===== */
+
+    /* 应用切换 Tab */
+    .media-app-tabs {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .media-app-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 18px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.25s;
+        font-family: inherit;
+    }
+    .media-app-tab:hover {
+        color: var(--text-primary);
+        border-color: rgba(99,102,241,0.25);
+    }
+    .media-app-tab.active {
+        color: #fff;
+        background: rgba(99,102,241,0.12);
+        border-color: rgba(99,102,241,0.4);
+        box-shadow: 0 0 14px rgba(99,102,241,0.1);
+    }
+    .media-app-tab .tab-video-count {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 100px;
+        background: rgba(255,255,255,0.06);
+    }
+    .media-app-tab.active .tab-video-count {
+        background: rgba(99,102,241,0.3);
+        color: #c4b5fd;
+    }
+
+    /* 筛选工具栏 */
+    .media-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .media-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 10px;
+        flex: 1;
+        max-width: 320px;
+        transition: border-color 0.3s;
+    }
+    .media-search:focus-within { border-color: rgba(99,102,241,0.4); }
+    .media-search svg { color: var(--text-faint); flex-shrink: 0; }
+    .media-search input {
+        background: none; border: none; outline: none;
+        color: var(--text-primary); font-size: 0.85rem;
+        flex: 1; min-width: 0;
+    }
+    .media-search input::placeholder { color: var(--text-faint); }
+
+    .media-filter-group {
+        display: flex;
+        gap: 4px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        padding: 3px;
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+    .media-filter-btn {
+        padding: 6px 14px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        font-family: inherit;
+    }
+    .media-filter-btn:hover { color: var(--text-primary); }
+    .media-filter-btn.active {
+        color: #fff;
+        background: rgba(99,102,241,0.15);
+        box-shadow: 0 0 10px rgba(99,102,241,0.1);
+    }
+
+    .media-sort-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-left: auto;
+        font-family: inherit;
+    }
+    .media-sort-btn:hover { color: var(--text-primary); border-color: rgba(99,102,241,0.3); }
+
+    /* 分类面包屑 */
+    .media-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 20px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+    .media-breadcrumb a {
+        color: var(--text-muted);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .media-breadcrumb a:hover { color: #818cf8; }
+    .media-breadcrumb .bc-sep { color: var(--text-faint); }
+    .media-breadcrumb .bc-current { color: var(--text-primary); font-weight: 600; }
+
+    /* 视频卡片网格 */
+    .media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .media-card {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.35s cubic-bezier(.4,0,.2,1);
+        cursor: pointer;
+        position: relative;
+    }
+    .media-card::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: 15%;
+        right: 15%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(99,102,241,0.3), transparent);
+        opacity: 0;
+        transition: opacity 0.4s;
+        pointer-events: none;
+        z-index: 3;
+    }
+    .media-card:hover::before { opacity: 1; }
+    .media-card:hover {
+        border-color: rgba(99,102,241,0.2);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(99,102,241,0.08), 0 0 60px rgba(99,102,241,0.03);
+    }
+    .media-card.selected {
+        border-color: rgba(99,102,241,0.4);
+        box-shadow: 0 0 24px rgba(99,102,241,0.12);
+    }
+
+    /* 卡片选中 checkbox */
+    .media-card-check {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(6px);
+        border: 1.5px solid rgba(255,255,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3;
+        opacity: 0;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .media-card:hover .media-card-check,
+    .media-card.selected .media-card-check { opacity: 1; }
+    .media-card.selected .media-card-check {
+        background: #6366f1;
+        border-color: #6366f1;
+    }
+
+    /* 缩略图 */
+    .media-card-thumb {
+        position: relative;
+        aspect-ratio: 16/9;
+        overflow: hidden;
+        background: #0a0a16;
+    }
+    .media-card-thumb canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+    .media-card-dur {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
+        padding: 2px 8px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #fff;
+        background: rgba(0,0,0,0.7);
+        border-radius: 5px;
+        font-family: 'JetBrains Mono', monospace;
+        z-index: 2;
+    }
+    .media-card-res {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 2px 7px;
+        font-size: 0.6rem;
+        font-weight: 600;
+        color: #818cf8;
+        background: rgba(99,102,241,0.15);
+        backdrop-filter: blur(6px);
+        border-radius: 4px;
+        z-index: 2;
+    }
+
+    /* Hover 遮罩按钮 */
+    .media-card-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        opacity: 0;
+        transition: opacity 0.25s;
+        z-index: 2;
+    }
+    .media-card-thumb:hover .media-card-overlay { opacity: 1; }
+    .media-card-overlay-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 7px 14px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+        backdrop-filter: blur(8px);
+    }
+    .media-card-overlay-btn--play {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .media-card-overlay-btn--play:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    .media-card-overlay-btn--task {
+        background: linear-gradient(135deg, #a855f7, #6366f1);
+        box-shadow: 0 0 16px rgba(99,102,241,0.3);
+    }
+    .media-card-overlay-btn--task:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 0 24px rgba(99,102,241,0.4);
+    }
+
+    /* 卡片信息 */
+    .media-card-body {
+        padding: 12px 14px 14px;
+    }
+    .media-card-name {
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .media-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    .media-card-tag {
+        padding: 2px 8px;
+        font-size: 0.62rem;
+        font-weight: 600;
+        color: #06b6d4;
+        background: rgba(6,182,212,0.1);
+        border-radius: 4px;
+    }
+    .media-card-size {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--text-faint);
+    }
+    .media-card-date {
+        margin-left: auto;
+        color: var(--text-faint);
+    }
+
+    /* 批量操作栏 */
+    .media-batch-bar {
+        display: none;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 18px;
+        background: rgba(99,102,241,0.08);
+        border: 1px solid rgba(99,102,241,0.2);
+        border-radius: 12px;
+        margin-bottom: 16px;
+        animation: fadeInUp 0.3s ease-out;
+    }
+    .media-batch-bar.visible { display: flex; }
+    .media-batch-count {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #818cf8;
+    }
+    .media-batch-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+    }
+    .media-batch-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .media-batch-btn:hover { border-color: rgba(99,102,241,0.3); }
+    .media-batch-btn--primary {
+        color: #fff;
+        background: linear-gradient(135deg, #a855f7, #6366f1);
+        border: none;
+        box-shadow: 0 0 14px rgba(99,102,241,0.2);
+    }
+    .media-batch-btn--primary:hover { box-shadow: 0 0 24px rgba(99,102,241,0.35); }
+    .media-batch-btn--danger { color: #f87171; }
+    .media-batch-btn--danger:hover { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+
+    /* 发起任务下拉菜单 */
+    .task-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    .task-dropdown-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 180px;
+        background: rgba(18,18,30,0.98);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 6px;
+        z-index: 100;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        backdrop-filter: blur(16px);
+        animation: fadeInUp 0.2s ease-out;
+    }
+    .task-dropdown-menu.open { display: block; }
+    .task-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        border: none;
+        background: none;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+    .task-dropdown-item:hover {
+        color: var(--text-primary);
+        background: rgba(99,102,241,0.1);
+    }
+    .task-dropdown-item svg { flex-shrink: 0; }
+
+    /* 分页 */
+    .media-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .media-page-btn {
+        min-width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .media-page-btn:hover { color: var(--text-primary); border-color: rgba(99,102,241,0.3); }
+    .media-page-btn.active {
+        color: #fff;
+        background: rgba(99,102,241,0.15);
+        border-color: rgba(99,102,241,0.4);
+    }
+    .media-page-info {
+        font-size: 0.72rem;
+        color: var(--text-faint);
+        margin-left: 12px;
+    }
+
+    /* 统计栏 */
+    .media-stats-bar {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 18px 22px;
+        background: rgba(255,255,255,0.025);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 16px;
+        margin-bottom: 24px;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        position: relative;
+        overflow: hidden;
+    }
+    .media-stats-bar::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: 10%;
+        right: 10%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(99,102,241,0.25), transparent);
+        pointer-events: none;
+    }
+    .media-stat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .media-stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .media-stat-icon::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 16px;
+        pointer-events: none;
+    }
+    .media-stat-icon--purple { background: rgba(99,102,241,0.12); color: #a855f7; }
+    .media-stat-icon--purple::after { background: radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%); }
+    .media-stat-icon--blue { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .media-stat-icon--blue::after { background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%); }
+    .media-stat-icon--cyan { background: rgba(6,182,212,0.12); color: #06b6d4; }
+    .media-stat-icon--cyan::after { background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%); }
+    .media-stat-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .media-stat-label {
+        font-size: 0.68rem;
+        color: var(--text-muted);
+    }
+    .media-stat-divider {
+        width: 1px;
+        height: 28px;
+        background: rgba(255,255,255,0.06);
+    }
+
+    /* 空状态 */
+    .media-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 30px;
+        text-align: center;
+    }
+    .media-empty-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        background: rgba(99,102,241,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        color: var(--text-faint);
+    }
+    .media-empty h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+    .media-empty p {
+        font-size: 0.8rem;
+        color: var(--text-dim);
+    }
+
+    /* 视频预览弹窗 */
+    .media-preview-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(12px);
+        align-items: center;
+        justify-content: center;
+    }
+    .media-preview-modal.open { display: flex; }
+    .media-preview-content {
+        width: 90%;
+        max-width: 800px;
+        background: rgba(18,18,30,0.98);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        overflow: hidden;
+        animation: fadeInUp 0.3s ease-out;
+    }
+    .media-preview-video {
+        aspect-ratio: 16/9;
+        background: #0a0a16;
+        position: relative;
+    }
+    .media-preview-video canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+    .media-preview-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 5;
+        transition: all 0.2s;
+    }
+    .media-preview-close:hover { background: rgba(239,68,68,0.5); }
+    .media-preview-info {
+        padding: 20px 24px;
+    }
+    .media-preview-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .media-preview-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+    }
+    .media-preview-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .media-preview-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.06);
+        background: rgba(255,255,255,0.03);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .media-preview-btn:hover {
+        border-color: rgba(99,102,241,0.3);
+        background: rgba(99,102,241,0.06);
+    }
+    .media-preview-btn--primary {
+        background: linear-gradient(135deg, #a855f7, #6366f1);
+        border: none;
+        color: #fff;
+        box-shadow: 0 0 20px rgba(99,102,241,0.2);
+    }
+    .media-preview-btn--primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 0 30px rgba(99,102,241,0.35);
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 900px) {
+        .media-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        .media-stats-bar { flex-wrap: wrap; }
+    }
+    @media (max-width: 600px) {
+        .media-grid { grid-template-columns: 1fr; }
+        .media-toolbar { flex-direction: column; align-items: stretch; }
+        .media-search { max-width: none; }
+    }
+    /* ===== 用户下拉菜单 ===== */
+    .icon-nav-avatar { position: relative; }
+    .user-dropdown {
+        position: absolute;
+        bottom: 0;
+        left: calc(100% + 10px);
+        width: 200px;
+        background: rgba(15,15,26,0.95);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 8px;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 30px rgba(99,102,241,0.06);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(6px);
+        transition: all 0.2s cubic-bezier(.4,0,.2,1);
+        z-index: 200;
+    }
+    .user-dropdown.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    .user-dropdown-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 8px 10px;
+    }
+    .user-dropdown-avatar {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6, #06b6d4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .user-dropdown-info { min-width: 0; }
+    .user-dropdown-name {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .user-dropdown-hint {
+        font-size: 0.65rem;
+        color: var(--text-faint);
+    }
+    .user-dropdown-divider {
+        height: 1px;
+        background: rgba(255,255,255,0.06);
+        margin: 4px 0;
+    }
+    .user-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+    .user-dropdown-item:hover {
+        color: var(--text-primary);
+        background: rgba(255,255,255,0.05);
+    }
+    .user-dropdown-logout:hover {
+        color: #ef4444;
+        background: rgba(239,68,68,0.08);
+    }
+
+    /* ===== 亮色模式全面覆盖 ===== */
+
+    /* 全局 */
+    [data-theme="light"] body,
+    [data-theme="light"] .creator-layout {
+        background: linear-gradient(180deg, transparent 35%, #F5F8FC 55%), linear-gradient(90deg, #ECF4FF 0%, #EBEBFF 45%, #FFF8FA 80%, #F5F8FC 100%), #F5F8FC !important;
+        color: #1e293b !important;
+    }
+
+    /* 侧边栏 */
+    [data-theme="light"] .icon-sidebar {
+        background: transparent !important;
+        border-right: none !important;
+        backdrop-filter: none !important;
+    }
+    [data-theme="light"] .icon-nav-item { color: #475569 !important; }
+    [data-theme="light"] .icon-nav-item:hover { color: #1e293b !important; background: rgba(0,0,0,0.04) !important; }
+    [data-theme="light"] .icon-nav-item.active { color: #1e293b !important; background: rgba(255,255,255,0.85) !important; border-radius: 14px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important; }
+    .nav-icon { display: block; }
+    .icon-nav-item .nav-icon--on { display: none; }
+    .icon-nav-item .nav-icon--off { display: block; }
+    .icon-nav-item.active .nav-icon--on { display: block; }
+    .icon-nav-item.active .nav-icon--off { display: none; }
+
+    /* 顶栏 */
+    [data-theme="light"] .topbar { border-color: rgba(0,0,0,0.06) !important; }
+    [data-theme="light"] .page-title { color: #1e293b !important; }
+
+    /* 统计栏 */
+    [data-theme="light"] .media-stats-bar {
+        background: rgba(255,255,255,0.7) !important;
+        border-color: rgba(0,0,0,0.07) !important;
+        backdrop-filter: blur(12px) !important;
+    }
+    [data-theme="light"] .media-stats-bar::before { background: linear-gradient(90deg, transparent, rgba(99,102,241,0.12), transparent) !important; }
+    [data-theme="light"] .media-stat-value { color: #1e293b !important; }
+    [data-theme="light"] .media-stat-label { color: #64748b !important; }
+    [data-theme="light"] .media-stat-divider { background: rgba(0,0,0,0.08) !important; }
+
+    /* 应用标签 */
+    [data-theme="light"] .media-app-tab {
+        background: rgba(0,0,0,0.02) !important;
+        border-color: rgba(0,0,0,0.08) !important;
+        color: #64748b !important;
+    }
+    [data-theme="light"] .media-app-tab:hover { color: #1e293b !important; border-color: rgba(99,102,241,0.25) !important; }
+    [data-theme="light"] .media-app-tab.active {
+        color: #4f46e5 !important;
+        background: rgba(99,102,241,0.08) !important;
+        border-color: rgba(99,102,241,0.3) !important;
+    }
+    [data-theme="light"] .media-app-tab .tab-video-count { background: rgba(0,0,0,0.05) !important; color: #64748b !important; }
+    [data-theme="light"] .media-app-tab.active .tab-video-count { background: rgba(99,102,241,0.2) !important; color: #4f46e5 !important; }
+
+    /* 面包屑 */
+    [data-theme="light"] .media-breadcrumb { color: #64748b !important; }
+    [data-theme="light"] .media-breadcrumb a { color: #64748b !important; }
+    [data-theme="light"] .media-breadcrumb .bc-current { color: #1e293b !important; }
+
+    /* 搜索 & 筛选 */
+    [data-theme="light"] .media-search {
+        background: rgba(255,255,255,0.8) !important;
+        border-color: rgba(0,0,0,0.1) !important;
+    }
+    [data-theme="light"] .media-search input { color: #1e293b !important; }
+    [data-theme="light"] .media-search input::placeholder { color: #94a3b8 !important; }
+    [data-theme="light"] .media-search svg { color: #94a3b8 !important; }
+
+    [data-theme="light"] .media-filter-group {
+        background: rgba(0,0,0,0.02) !important;
+        border-color: rgba(0,0,0,0.08) !important;
+    }
+    [data-theme="light"] .media-filter-btn { color: #64748b !important; }
+    [data-theme="light"] .media-filter-btn:hover { color: #1e293b !important; }
+    [data-theme="light"] .media-filter-btn.active {
+        color: #4f46e5 !important;
+        background: rgba(99,102,241,0.1) !important;
+    }
+
+    [data-theme="light"] .media-sort-btn {
+        background: rgba(255,255,255,0.8) !important;
+        border-color: rgba(0,0,0,0.08) !important;
+        color: #64748b !important;
+    }
+    [data-theme="light"] .media-sort-btn:hover { color: #1e293b !important; }
+
+    /* 视频卡片 */
+    [data-theme="light"] .media-card {
+        background: rgba(255,255,255,0.8) !important;
+        border-color: rgba(0,0,0,0.07) !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+    }
+    [data-theme="light"] .media-card::before { background: linear-gradient(90deg, transparent, rgba(99,102,241,0.15), transparent) !important; }
+    [data-theme="light"] .media-card:hover {
+        background: #fff !important;
+        border-color: rgba(99,102,241,0.2) !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.06) !important;
+    }
+    [data-theme="light"] .media-card.selected {
+        border-color: rgba(99,102,241,0.35) !important;
+        box-shadow: 0 0 20px rgba(99,102,241,0.08) !important;
+    }
+    [data-theme="light"] .media-card-thumb { background: #e2e8f0 !important; }
+    [data-theme="light"] .media-card-name { color: #1e293b !important; }
+    [data-theme="light"] .media-card-meta { color: #64748b !important; }
+    [data-theme="light"] .media-card-size { color: #94a3b8 !important; }
+    [data-theme="light"] .media-card-date { color: #94a3b8 !important; }
+
+    /* 批量操作栏 */
+    [data-theme="light"] .media-batch-bar {
+        background: rgba(99,102,241,0.05) !important;
+        border-color: rgba(99,102,241,0.15) !important;
+    }
+    [data-theme="light"] .media-batch-btn {
+        background: rgba(0,0,0,0.03) !important;
+        border-color: rgba(0,0,0,0.1) !important;
+        color: #475569 !important;
+    }
+
+    /* 分页 */
+    [data-theme="light"] .media-page-btn {
+        background: rgba(0,0,0,0.02) !important;
+        border-color: rgba(0,0,0,0.08) !important;
+        color: #64748b !important;
+    }
+    [data-theme="light"] .media-page-btn:hover { color: #1e293b !important; }
+    [data-theme="light"] .media-page-btn.active {
+        color: #4f46e5 !important;
+        background: rgba(99,102,241,0.1) !important;
+        border-color: rgba(99,102,241,0.3) !important;
+    }
+    [data-theme="light"] .media-page-info { color: #94a3b8 !important; }
+
+    /* 预览弹窗 */
+    [data-theme="light"] .media-preview-content {
+        background: rgba(255,255,255,0.98) !important;
+        border-color: rgba(0,0,0,0.1) !important;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.15) !important;
+    }
+    [data-theme="light"] .media-preview-video { background: #e2e8f0 !important; }
+    [data-theme="light"] .media-preview-title { color: #1e293b !important; }
+    [data-theme="light"] .media-preview-meta { color: #64748b !important; }
+    [data-theme="light"] .media-preview-btn {
+        background: rgba(0,0,0,0.03) !important;
+        border-color: rgba(0,0,0,0.1) !important;
+        color: #475569 !important;
+    }
+    [data-theme="light"] .media-preview-btn:hover {
+        background: rgba(99,102,241,0.06) !important;
+        border-color: rgba(99,102,241,0.2) !important;
+    }
+
+    /* 下拉菜单 */
+    [data-theme="light"] .task-dropdown-menu {
+        background: rgba(255,255,255,0.98) !important;
+        border-color: rgba(0,0,0,0.1) !important;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.1) !important;
+    }
+    [data-theme="light"] .task-dropdown-item { color: #475569 !important; }
+    [data-theme="light"] .task-dropdown-item:hover { color: #1e293b !important; background: rgba(0,0,0,0.04) !important; }
+
+    /* 用户下拉 */
+    [data-theme="light"] .user-dropdown {
+        background: rgba(255,255,255,0.97) !important;
+        border-color: rgba(0,0,0,0.08) !important;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.1) !important;
+    }
+    [data-theme="light"] .user-dropdown-name { color: #1e293b !important; }
+    [data-theme="light"] .user-dropdown-hint { color: #94a3b8 !important; }
+    [data-theme="light"] .user-dropdown-divider { background: rgba(0,0,0,0.06) !important; }
+    [data-theme="light"] .user-dropdown-item { color: #64748b !important; }
+    [data-theme="light"] .user-dropdown-item:hover { color: #1e293b !important; background: rgba(0,0,0,0.04) !important; }
+
+    /* 主题切换按钮动态图标 */
+    [data-theme="light"] .theme-toggle-btn svg.icon-sun { display: none; }
+    [data-theme="light"] .theme-toggle-btn svg.icon-moon { display: block; }
+    .theme-toggle-btn svg.icon-moon { display: none; }
+    .theme-toggle-btn svg.icon-sun { display: block; }
+    </style>
+</head>
+<body class="creator-layout">
+    <!-- 侧边栏 -->
+    <aside class="icon-sidebar">
+        <a href="create.html" class="icon-sidebar-logo" title="Tideo"><span class="logo-wordmark">Tideo</span></a>
+        <nav class="icon-nav">
+            <a href="create.html" class="icon-nav-item"><img class="nav-icon nav-icon--off" src="assets/icons/nav-create.svg" width="22" height="22" alt=""><img class="nav-icon nav-icon--on" src="assets/icons/nav-create-active.svg" width="22" height="22" alt="">生成</a>
+            <a href="media.html" class="icon-nav-item active"><img class="nav-icon nav-icon--off" src="assets/icons/nav-media.svg" width="22" height="22" alt=""><img class="nav-icon nav-icon--on" src="assets/icons/nav-media-active.svg" width="22" height="22" alt="">素材</a>
+            <a href="result.html" class="icon-nav-item"><img class="nav-icon nav-icon--off" src="assets/icons/nav-result.svg" width="22" height="22" alt=""><img class="nav-icon nav-icon--on" src="assets/icons/nav-result-active.svg" width="22" height="22" alt="">作品</a>
+        </nav>
+        <div class="icon-nav-bottom">
+            <a href="api.html" class="icon-nav-item" title="API 管理"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14H11V21L20 10H13Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></a>
+            <a href="#" class="icon-nav-item theme-toggle-btn" id="themeToggleBtn" title="切换明暗模式">
+                <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"></circle><path d="M12 1V3M12 21V23M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M1 12H3M21 12H23M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </a>
+            <div class="icon-nav-avatar" id="userAvatar" title="用户"><span id="userAvatarLetter">U</span></div>
+            <!-- 用户下拉菜单 -->
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header">
+                    <div class="user-dropdown-avatar" id="dropdownAvatar">U</div>
+                    <div class="user-dropdown-info">
+                        <div class="user-dropdown-name" id="dropdownName">未登录</div>
+                        <div class="user-dropdown-hint" id="dropdownHint">点击登录</div>
+                    </div>
+                </div>
+                <div class="user-dropdown-divider"></div>
+                <a href="#" class="user-dropdown-item" id="userLoginBtn">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H4C2.89543 2 2 2.89543 2 4V12C2 13.1046 2.89543 14 4 14H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10 11L14 8L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    登录
+                </a>
+                <a href="#" class="user-dropdown-item user-dropdown-logout" id="userLogoutBtn" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H4C2.89543 2 2 2.89543 2 4V12C2 13.1046 2.89543 14 4 14H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10 11L14 8L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    退出登录
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <!-- 顶部栏 -->
+        <header class="topbar">
+            <div class="topbar-left"><h1 class="page-title">素材管理</h1></div>
+            <div class="topbar-right">
+                <button class="media-batch-btn--primary" style="padding:8px 18px;font-size:0.82rem;font-weight:600;border-radius:10px;border:none;color:#fff;background:linear-gradient(135deg,#a855f7,#6366f1);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;box-shadow:0 0 16px rgba(99,102,241,0.2);" id="uploadToVodBtn">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 10V2M7 2L4 5M7 2L10 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 9V11C2 11.5523 2.44772 12 3 12H11C11.5523 12 12 11.5523 12 12V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    上传到点播
+                </button>
+
+            </div>
+        </header>
+
+        <!-- 统计栏 -->
+        <div class="media-stats-bar">
+            <div class="media-stat">
+                <div class="media-stat-icon media-stat-icon--purple">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8L12 10.5L8 13V8Z" fill="currentColor"/></svg>
+                </div>
+                <div>
+                    <div class="media-stat-value" id="statTotalVideos">156</div>
+                    <div class="media-stat-label">视频总数</div>
+                </div>
+            </div>
+            <div class="media-stat-divider"></div>
+            <div class="media-stat">
+                <div class="media-stat-icon media-stat-icon--blue">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 6C3 4.89543 3.89543 4 5 4H9L11 6H15C16.1046 6 17 6.89543 17 8V14C17 15.1046 16.1046 16 15 16H5C3.89543 16 3 15.1046 3 14V6Z" stroke="currentColor" stroke-width="1.5"/></svg>
+                </div>
+                <div>
+                    <div class="media-stat-value" id="statApps">3</div>
+                    <div class="media-stat-label">应用数量</div>
+                </div>
+            </div>
+            <div class="media-stat-divider"></div>
+            <div class="media-stat">
+                <div class="media-stat-icon media-stat-icon--cyan">
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 14L7 8L10 11L14 5L16 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div>
+                    <div class="media-stat-value" id="statTotalSize">48.3 GB</div>
+                    <div class="media-stat-label">存储用量</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件夹标签（COS 动态生成） -->
+        <div class="media-app-tabs" id="appTabs">
+            <button class="media-app-tab active" data-prefix="">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4C2 3.44772 2.44772 3 3 3H6L7.5 4.5H13C13.5523 4.5 14 4.94772 14 5.5V12C14 12.5523 13.5523 13 13 13H3C2.44772 13 2 12.5523 2 12V4Z" stroke="currentColor" stroke-width="1.2"/></svg>
+                全部文件
+                <span class="tab-video-count" id="tabAllCount">-</span>
+            </button>
+        </div>
+
+        <!-- 分类面包屑 -->
+        <div class="media-breadcrumb" id="mediaBreadcrumb">
+            <a href="#">全部分类</a>
+            <span class="bc-sep">›</span>
+            <span class="bc-current">产品宣传</span>
+        </div>
+
+        <!-- 筛选工具栏 -->
+        <div class="media-toolbar">
+            <div class="media-search">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <input type="text" placeholder="搜索视频名称…" id="mediaSearch">
+            </div>
+            <div class="media-filter-group">
+                <button class="media-filter-btn active" data-type="all">全部</button>
+                <button class="media-filter-btn" data-type="video">视频</button>
+                <button class="media-filter-btn" data-type="audio">音频</button>
+                <button class="media-filter-btn" data-type="image">图片</button>
+            </div>
+            <button class="media-sort-btn" id="mediaSortBtn">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4H12M4 7H10M6 10H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                最近上传
+            </button>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="media-batch-bar" id="mediaBatchBar">
+            <span class="media-batch-count">已选 <strong id="mediaBatchCount">0</strong> 个</span>
+            <div class="media-batch-actions">
+                <div class="task-dropdown">
+                    <button class="media-batch-btn media-batch-btn--primary" id="batchTaskBtn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1L7.5 4H11L8 6.2L9.2 9.5L6 7.5L2.8 9.5L4 6.2L1 4H4.5L6 1Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+                        发起任务
+                    </button>
+                    <div class="task-dropdown-menu" id="batchTaskMenu">
+                        <button class="task-dropdown-item" data-route="create.html" data-feature="translate">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10L7 4L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M10 16L13 10L16 16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 14H15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                            视频译制
+                        </button>
+                        <button class="task-dropdown-item" data-route="create.html" data-feature="generate">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2L12 7H17L13 10L14.5 15L10 12L5.5 15L7 10L3 7H8L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                            AI 生成
+                        </button>
+                        <button class="task-dropdown-item" data-route="create.html" data-feature="livestream">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.2"/></svg>
+                            直播剪辑
+                        </button>
+                    </div>
+                </div>
+                <button class="media-batch-btn">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 8V10H10V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 2V7M6 7L4 5M6 7L8 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    批量下载
+                </button>
+                <button class="media-batch-btn media-batch-btn--danger">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                    删除
+                </button>
+            </div>
+        </div>
+
+        <!-- 视频卡片网格 -->
+        <div class="media-grid" id="mediaGrid">
+            <!-- JS 动态渲染 -->
+        </div>
+
+        <!-- 分页 -->
+        <div class="media-pagination" id="mediaPagination">
+            <button class="media-page-btn">‹</button>
+            <button class="media-page-btn active">1</button>
+            <button class="media-page-btn">2</button>
+            <button class="media-page-btn">3</button>
+            <button class="media-page-btn">…</button>
+            <button class="media-page-btn">8</button>
+            <button class="media-page-btn">›</button>
+            <span class="media-page-info">共 82 条 · 每页 12 条</span>
+        </div>
+    </main>
+
+    <!-- 视频预览弹窗 -->
+    <div class="media-preview-modal" id="mediaPreviewModal">
+        <div class="media-preview-content">
+            <div class="media-preview-video">
+                <canvas id="previewCanvas" width="800" height="450"></canvas>
+                <button class="media-preview-close" id="previewClose">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="media-preview-info">
+                <div class="media-preview-title" id="previewTitle">—</div>
+                <div class="media-preview-meta" id="previewMeta">
+                    <span>—</span>
+                </div>
+                <div class="media-preview-actions">
+                    <button class="media-preview-btn" id="previewCopyLink">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 7C4 5.89543 4.89543 5 6 5H8C9.10457 5 10 5.89543 10 7V11C10 12.1046 9.10457 13 8 13H6C4.89543 13 4 12.1046 4 11V7Z" stroke="currentColor" stroke-width="1.3"/><path d="M6 5V3C6 1.89543 6.89543 1 8 1V1C9.10457 1 10 1.89543 10 3V5" stroke="currentColor" stroke-width="1.3"/></svg>
+                        复制链接
+                    </button>
+                    <div class="task-dropdown" style="flex:1;">
+                        <button class="media-preview-btn media-preview-btn--primary" id="previewTaskBtn" style="width:100%;">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 4H12L9 6.2L10 9.5L7 7.5L4 9.5L5 6.2L2 4H5.5L7 1Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg>
+                            发起任务
+                        </button>
+                        <div class="task-dropdown-menu" id="previewTaskMenu">
+                            <button class="task-dropdown-item" data-route="create.html" data-feature="translate">
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 10L7 4L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M10 16L13 10L16 16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 14H15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                                视频译制
+                            </button>
+                            <button class="task-dropdown-item" data-route="create.html" data-feature="generate">
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2L12 7H17L13 10L14.5 15L10 12L5.5 15L7 10L3 7H8L10 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+                                AI 生成
+                            </button>
+                            <button class="task-dropdown-item" data-route="create.html" data-feature="livestream">
+                                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.2"/></svg>
+                                直播剪辑
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ===== 工具函数 =====
+    function formatDuration(sec) {
+        sec = Math.round(sec || 0);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        return `${m}:${String(s).padStart(2,'0')}`;
+    }
+    function formatSize(bytes) {
+        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+        if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + ' MB';
+        return (bytes / 1024).toFixed(0) + ' KB';
+    }
+    function getExt(name) {
+        return (name || '').split('.').pop().toLowerCase();
+    }
+    function isVideo(name) {
+        return ['mp4','mov','avi','mkv','webm','m4v'].indexOf(getExt(name)) !== -1;
+    }
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        var d = new Date(dateStr);
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    // ===== 状态 =====
+    let allFiles = [];
+    let currentPrefix = ''; // 当前路径
+    const grid = document.getElementById('mediaGrid');
+    const selectedCards = new Set();
+
+    // ===== 从 COS 加载文件夹和文件 =====
+    async function loadBucket(prefix) {
+        currentPrefix = prefix || '';
+        selectedCards.clear();
+        updateBatchBar();
+        grid.innerHTML = '<div class="media-empty"><div class="media-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 6V12L16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><h3>加载中…</h3><p>正在从云存储读取文件</p></div>';
+
+        try {
+            var result = await TideoAPI.listBucket({ prefix: currentPrefix });
+            var folders = result.folders;
+            var files = result.files;
+            var allMedia = files.filter(function(f) { return isVideo(f.name) || isMedia(f.name); });
+
+            // 更新面包屑
+            renderBreadcrumb(currentPrefix);
+            // 更新统计
+            document.getElementById('statTotalVideos').textContent = allMedia.length;
+            document.getElementById('statTotalSize').textContent = formatSize(allMedia.reduce(function(s,f){return s+f.size},0));
+            document.getElementById('statApps').textContent = folders.length;
+            document.getElementById('tabAllCount').textContent = allMedia.length + (folders.length ? ' + ' + folders.length + ' 个文件夹' : '');
+
+            // 如果在根目录，动态生成文件夹标签
+            if (!currentPrefix) {
+                renderFolderTabs(folders);
+            }
+
+            if (folders.length === 0 && allMedia.length === 0) {
+                grid.innerHTML = '<div class="media-empty"><div class="media-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M3 6C3 4.89543 3.89543 4 5 4H9L11 6H19C20.1046 6 21 6.89543 21 8V18C21 19.1046 20.1046 20 19 20H5C3.89543 20 3 19.1046 3 18V6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><h3>此目录为空</h3><p>上传文件后会显示在这里</p></div>';
+                return;
+            }
+            renderGrid(folders, allMedia);
+        } catch(err) {
+            console.error('加载文件失败:', err);
+            grid.innerHTML = '<div class="media-empty"><div class="media-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M8 8L16 16M16 8L8 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><h3>加载失败</h3><p>'+err.message+'</p></div>';
+        }
+    }
+
+    // ===== 面包屑导航 =====
+    function renderBreadcrumb(prefix) {
+        var bc = document.getElementById('mediaBreadcrumb');
+        var html = '<a href="#" onclick="loadBucket(\'\');return false">🗂 根目录</a>';
+        if (prefix) {
+            var parts = prefix.replace(/\/$/,'').split('/');
+            var path = '';
+            parts.forEach(function(p, i) {
+                path += p + '/';
+                html += ' <span class="bc-sep">›</span> ';
+                if (i === parts.length - 1) {
+                    html += '<span class="bc-current">' + p + '</span>';
+                } else {
+                    html += '<a href="#" onclick="loadBucket(\'' + path + '\');return false">' + p + '</a>';
+                }
+            });
+        }
+        bc.innerHTML = html;
+    }
+
+    // ===== 动态文件夹标签 =====
+    function renderFolderTabs(folders) {
+        var tabs = document.getElementById('appTabs');
+        // 保留"全部文件"按钮，追加文件夹标签
+        var existingExtra = tabs.querySelectorAll('.media-app-tab[data-folder]');
+        existingExtra.forEach(function(t) { t.remove(); });
+        folders.forEach(function(f) {
+            var btn = document.createElement('button');
+            btn.className = 'media-app-tab';
+            btn.dataset.folder = f.prefix;
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4C2 3.44772 2.44772 3 3 3H6L7.5 4.5H13C13.5523 4.5 14 4.94772 14 5.5V12C14 12.5523 13.5523 13 13 13H3C2.44772 13 2 12.5523 2 12V4Z" stroke="currentColor" stroke-width="1.2"/></svg> ' + f.name;
+            btn.onclick = function() {
+                tabs.querySelectorAll('.media-app-tab').forEach(function(t){t.classList.remove('active')});
+                this.classList.add('active');
+                loadBucket(f.prefix);
+            };
+            tabs.appendChild(btn);
+        });
+        // "全部"按钮事件
+        var allTab = tabs.querySelector('[data-prefix=""]');
+        if (allTab) {
+            allTab.onclick = function() {
+                tabs.querySelectorAll('.media-app-tab').forEach(function(t){t.classList.remove('active')});
+                this.classList.add('active');
+                loadBucket('');
+            };
+        }
+    }
+
+    function isMedia(name) {
+        return ['mp4','mov','avi','mkv','webm','m4v','jpg','jpeg','png','gif','webp','mp3','wav','aac'].indexOf(getExt(name)) !== -1;
+    }
+
+    // ===== 渲染文件夹 + 文件卡片 =====
+    function renderGrid(folders, files) {
+        grid.innerHTML = '';
+
+        // 文件夹卡片
+        folders.forEach(function(folder) {
+            var card = document.createElement('div');
+            card.className = 'media-card';
+            card.style.cursor = 'pointer';
+            card.onclick = function() { loadBucket(folder.prefix); };
+            card.innerHTML =
+                '<div class="media-card-thumb" style="display:flex;align-items:center;justify-content:center;background:rgba(99,102,241,0.04)">' +
+                    '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="color:var(--text-muted,#94a3b8)"><path d="M8 14C8 11.7909 9.79086 10 12 10H20L24 14H36C38.2091 14 40 15.7909 40 18V34C40 36.2091 38.2091 38 36 38H12C9.79086 38 8 36.2091 8 34V14Z" fill="rgba(99,102,241,0.12)" stroke="currentColor" stroke-width="2"/></svg>' +
+                '</div>' +
+                '<div class="media-card-body">' +
+                    '<div class="media-card-name" title="'+folder.name+'">📁 '+folder.name+'</div>' +
+                    '<div class="media-card-meta"><span style="font-size:.7rem;color:var(--text-muted,#94a3b8)">文件夹 · 点击进入</span></div>' +
+                '</div>';
+            grid.appendChild(card);
+        });
+
+        // 文件卡片
+        files.forEach(function(item, idx) {
+            var card = document.createElement('div');
+            card.className = 'media-card';
+            card.dataset.fileKey = item.key;
+            card.dataset.url = item.url;
+
+            var isVid = isVideo(item.name);
+            var thumbContent = isVid
+                ? '<video src="'+item.url+'" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;display:block;" onloadedmetadata="this.currentTime=1"></video>'
+                : '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:rgba(0,0,0,0.03);font-size:1.5rem">📄</div>';
+
+            card.innerHTML =
+                '<div class="media-card-check" data-check="'+item.key+'">' +
+                    '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:none;"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                '</div>' +
+                '<div class="media-card-thumb">' +
+                    thumbContent +
+                    (isVid ? '<span class="media-card-dur" id="dur_'+idx+'">—</span>' : '') +
+                    '<span class="media-card-res">'+getExt(item.name).toUpperCase()+'</span>' +
+                    '<div class="media-card-overlay">' +
+                        '<button class="media-card-overlay-btn media-card-overlay-btn--play" data-action="preview" data-url="'+item.url+'" data-name="'+item.name+'" data-size="'+item.size+'" data-date="'+item.lastModified+'">' +
+                            '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2L12 7L4 12V2Z" fill="currentColor"/></svg> 预览' +
+                        '</button>' +
+                        (isVid ? '<button class="media-card-overlay-btn media-card-overlay-btn--task" data-action="task" data-url="'+item.url+'"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 4H12L9 6.2L10 9.5L7 7.5L4 9.5L5 6.2L2 4H5.5L7 1Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg> 译制</button>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="media-card-body">' +
+                    '<div class="media-card-name" title="'+item.name+'">'+item.name+'</div>' +
+                    '<div class="media-card-meta">' +
+                        '<span class="media-card-tag">'+getExt(item.name).toUpperCase()+'</span>' +
+                        '<span class="media-card-size">'+formatSize(item.size)+'</span>' +
+                        '<span class="media-card-date">'+formatDate(item.lastModified)+'</span>' +
+                    '</div>' +
+                '</div>';
+            grid.appendChild(card);
+
+            if (isVid) {
+                var vid = card.querySelector('video');
+                vid.addEventListener('loadedmetadata', function() {
+                    var durEl = document.getElementById('dur_'+idx);
+                    if(durEl && this.duration) durEl.textContent = formatDuration(this.duration);
+                });
+            }
+        });
+
+        bindCardEvents();
+        document.getElementById('mediaPagination').innerHTML = '<span class="media-page-info">' + (folders.length ? folders.length + ' 个文件夹 · ' : '') + files.length + ' 个文件</span>';
+    }
+
+    // ===== 卡片事件 =====
+    function bindCardEvents() {
+        document.querySelectorAll('.media-card-check').forEach(function(check) {
+            check.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var key = this.dataset.check;
+                var card = this.closest('.media-card');
+                var svg = this.querySelector('svg');
+                if (selectedCards.has(key)) {
+                    selectedCards.delete(key);
+                    card.classList.remove('selected');
+                    svg.style.display = 'none';
+                } else {
+                    selectedCards.add(key);
+                    card.classList.add('selected');
+                    svg.style.display = '';
+                }
+                updateBatchBar();
+            });
+        });
+
+        document.querySelectorAll('[data-action="preview"]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openPreview(this.dataset.url, this.dataset.name, this.dataset.size, this.dataset.date);
+            });
+        });
+
+        document.querySelectorAll('[data-action="task"]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var url = this.dataset.url;
+                window.location.href = 'create.html?feature=translate&videoUrl=' + encodeURIComponent(url);
+            });
+        });
+    }
+
+    function updateBatchBar() {
+        var bar = document.getElementById('mediaBatchBar');
+        var count = document.getElementById('mediaBatchCount');
+        count.textContent = selectedCards.size;
+        bar.classList.toggle('visible', selectedCards.size > 0);
+    }
+
+    // ===== 预览弹窗 =====
+    function openPreview(url, name, size, date) {
+        var modal = document.getElementById('mediaPreviewModal');
+        document.getElementById('previewTitle').textContent = name || '视频预览';
+        document.getElementById('previewMeta').innerHTML =
+            '<span>大小：'+formatSize(parseInt(size||0))+'</span>' +
+            '<span>上传：'+formatDate(date)+'</span>';
+
+        // 替换 canvas 为 video
+        var videoWrap = modal.querySelector('.media-preview-video');
+        var existingVid = videoWrap.querySelector('video');
+        if(existingVid) existingVid.remove();
+        var canvas = videoWrap.querySelector('canvas');
+        if(canvas) canvas.style.display = 'none';
+
+        var vid = document.createElement('video');
+        vid.src = url;
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#000';
+        videoWrap.insertBefore(vid, videoWrap.firstChild);
+
+        modal.classList.add('open');
+
+        // 复制链接按钮
+        document.getElementById('previewCopyLink').onclick = function() {
+            navigator.clipboard.writeText(url).then(function() {
+                this.textContent = '✓ 已复制';
+                setTimeout(function() { document.getElementById('previewCopyLink').innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 7C4 5.89543 4.89543 5 6 5H8C9.10457 5 10 5.89543 10 7V11C10 12.1046 9.10457 13 8 13H6C4.89543 13 4 12.1046 4 11V7Z" stroke="currentColor" stroke-width="1.3"/><path d="M6 5V3C6 1.89543 6.89543 1 8 1V1C9.10457 1 10 1.89543 10 3V5" stroke="currentColor" stroke-width="1.3"/></svg>复制链接'; }, 2000);
+            }.bind(this));
+        };
+    }
+
+    document.getElementById('previewClose').addEventListener('click', function() {
+        var modal = document.getElementById('mediaPreviewModal');
+        var vid = modal.querySelector('.media-preview-video video');
+        if(vid) { vid.pause(); vid.remove(); }
+        modal.classList.remove('open');
+    });
+    document.getElementById('mediaPreviewModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            var vid = this.querySelector('.media-preview-video video');
+            if(vid) { vid.pause(); vid.remove(); }
+            this.classList.remove('open');
+        }
+    });
+
+    // ===== 搜索 =====
+    document.getElementById('mediaSearch').addEventListener('input', function() {
+        var q = this.value.trim().toLowerCase();
+        document.querySelectorAll('.media-card').forEach(function(card) {
+            var name = card.querySelector('.media-card-name').textContent.toLowerCase();
+            card.style.display = name.indexOf(q) !== -1 ? '' : 'none';
+        });
+    });
+
+    // ===== 下拉菜单通用 =====
+    function closeAllDropdowns() {
+        document.querySelectorAll('.task-dropdown-menu.open').forEach(function(m) { m.classList.remove('open'); });
+    }
+    document.getElementById('batchTaskBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('batchTaskMenu').classList.toggle('open');
+    });
+    document.getElementById('previewTaskBtn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('previewTaskMenu').classList.toggle('open');
+    });
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.task-dropdown')) closeAllDropdowns();
+    });
+
+    // ===== 筛选按钮 =====
+    document.querySelectorAll('.media-filter-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.media-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+        });
+    });
+
+    // ===== 上传按钮 =====
+    document.getElementById('uploadToVodBtn').addEventListener('click', function() {
+        var fi = document.createElement('input');
+        fi.type = 'file';
+        fi.accept = 'video/*';
+        fi.onchange = function(e) {
+            var f = e.target.files[0];
+            if(!f) return;
+            TideoAPI.uploadFile(f, function(pct) {
+                document.getElementById('uploadToVodBtn').textContent = '上传中 ' + Math.round(pct*100) + '%';
+            }).then(function() {
+                document.getElementById('uploadToVodBtn').innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 10V2M7 2L4 5M7 2L10 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 9V11C2 11.5523 2.44772 12 3 12H11C11.5523 12 12 11.5523 12 12V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 上传到点播';
+                loadBucket(currentPrefix); // 刷新当前目录
+            }).catch(function(err) {
+                alert('上传失败: ' + err.message);
+                document.getElementById('uploadToVodBtn').innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 10V2M7 2L4 5M7 2L10 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 9V11C2 11.5523 2.44772 12 3 12H11C11.5523 12 12 11.5523 12 12V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> 上传到点播';
+            });
+        };
+        fi.click();
+    });
+
+    // ===== 初始化 =====
+    loadBucket('');
+    </script>
+
+    <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cos-js-sdk-v5@1.8.5/dist/cos-js-sdk-v5.min.js"></script>
+    <script src="api-client.js"></script>
+    <script src="tracker.js"></script>
+
+    <!-- 主题切换逻辑 -->
+    <script>
+    (function() {
+        var STORAGE_KEY = 'tideo_theme';
+        var html = document.documentElement;
+
+        // 页面加载时恢复保存的主题
+        var saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === 'dark') {
+            html.removeAttribute('data-theme');
+        } else if (saved === 'light') {
+            html.setAttribute('data-theme', 'light');
+        }
+        // 也检查系统偏好（如果没有手动设置过）
+        if (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            html.setAttribute('data-theme', 'light');
+        }
+
+        var btn = document.getElementById('themeToggleBtn');
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var current = html.getAttribute('data-theme');
+                if (current === 'light') {
+                    html.removeAttribute('data-theme');
+                    localStorage.setItem(STORAGE_KEY, 'dark');
+                } else {
+                    html.setAttribute('data-theme', 'light');
+                    localStorage.setItem(STORAGE_KEY, 'light');
+                }
+            });
+        }
+    })();
+    </script>
+
+    <!-- 用户菜单逻辑 -->
+    <script>
+    (function() {
+        var avatar = document.getElementById('userAvatar');
+        var avatarLetter = document.getElementById('userAvatarLetter');
+        var dropdown = document.getElementById('userDropdown');
+        var dropdownAvatar = document.getElementById('dropdownAvatar');
+        var dropdownName = document.getElementById('dropdownName');
+        var dropdownHint = document.getElementById('dropdownHint');
+        var loginBtn = document.getElementById('userLoginBtn');
+        var logoutBtn = document.getElementById('userLogoutBtn');
+
+        function updateUserUI() {
+            var raw = localStorage.getItem('tideo_user');
+            if (raw) {
+                try {
+                    var user = JSON.parse(raw);
+                    var initial = user.avatar || user.name.charAt(0).toUpperCase();
+                    avatarLetter.textContent = initial;
+                    dropdownAvatar.textContent = initial;
+                    dropdownName.textContent = user.name;
+                    dropdownHint.textContent = '已登录';
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'flex';
+                    avatar.title = user.name;
+                } catch(e) {}
+            } else {
+                avatarLetter.textContent = 'U';
+                dropdownAvatar.textContent = 'U';
+                dropdownName.textContent = '未登录';
+                dropdownHint.textContent = '点击登录';
+                loginBtn.style.display = 'flex';
+                logoutBtn.style.display = 'none';
+                avatar.title = '用户';
+            }
+        }
+
+        avatar.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target) && e.target !== avatar) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'login.html';
+        });
+
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            localStorage.removeItem('tideo_user');
+            updateUserUI();
+            dropdown.classList.remove('show');
+        });
+
+        updateUserUI();
+
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'tideo_user') updateUserUI();
+        });
+    })();
+    </script>
+</body>
+</html>

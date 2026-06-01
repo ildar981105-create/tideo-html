@@ -1,0 +1,475 @@
+/* ============================================
+   Tideo — 任务进度条 + 底部智能输入框
+   通用组件样式（v4 — 紧凑竖向步骤条）
+   ============================================ */
+
+/* ===== 底部区域容器（进度 + 输入框一体） ===== */
+.pbi-wrapper {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    background: rgba(10, 10, 16, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    transition: opacity 0.3s, max-height 0.4s ease;
+    max-height: 500px;
+    overflow: hidden;
+}
+.pbi-wrapper.hidden {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    border-top: none;
+}
+
+/* ===== 任务进度面板（已禁用） ===== */
+.task-progress-bar {
+    display: none !important;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* 进度头部 */
+.task-progress-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.task-progress-toggle:hover {
+    background: rgba(255,255,255,0.02);
+}
+.task-progress-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.task-progress-icon {
+    font-size: 0.65rem;
+    opacity: 0.6;
+}
+.task-progress-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.task-progress-count {
+    font-size: 0.58rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 1px 6px;
+    border-radius: 100px;
+    background: rgba(99,102,241,0.1);
+    color: #818cf8;
+    transition: all 0.3s;
+}
+.task-progress-count.done {
+    background: rgba(148,163,184,0.1);
+    color: #94a3b8;
+}
+.task-progress-chevron {
+    font-size: 0.6rem;
+    color: var(--text-faint);
+    transition: transform 0.3s;
+}
+.task-progress-bar.collapsed .task-progress-chevron {
+    transform: rotate(-90deg);
+}
+
+/* 折叠概览条 */
+.task-progress-overview {
+    height: 2px;
+    margin: 0 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 1px;
+    overflow: hidden;
+    transition: opacity 0.3s;
+}
+.task-progress-bar:not(.collapsed) .task-progress-overview {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+}
+.task-progress-overview-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #64748b, #94a3b8);
+    border-radius: 1px;
+    transition: width 0.5s ease;
+}
+
+/* ===== 步骤列表容器 ===== */
+.task-progress-list {
+    padding: 6px 10px 6px 14px;
+    max-height: 260px;
+    opacity: 1;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+}
+.task-progress-list::-webkit-scrollbar { width: 3px; }
+.task-progress-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+
+.task-progress-bar.collapsed .task-progress-list {
+    max-height: 0;
+    padding: 0 10px 0 14px;
+    opacity: 0;
+    overflow: hidden;
+}
+
+/* ===== 步骤项（竖向时间线） ===== */
+.task-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    position: relative;
+    min-height: 22px;
+    transition: all 0.25s ease;
+}
+
+/* 左侧：节点 + 连接线 */
+.task-step-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 16px;
+    position: relative;
+}
+
+/* 节点圆点 */
+.task-step-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+/* 连接线（除最后一个） */
+.task-step:not(:last-child) .task-step-line {
+    width: 1.5px;
+    flex: 1;
+    min-height: 6px;
+    margin: 2px 0;
+    transition: background 0.3s;
+}
+
+/* 右侧：文字 */
+.task-step-content {
+    flex: 1;
+    min-width: 0;
+    padding: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.task-step:last-child .task-step-content {
+    padding-bottom: 0;
+}
+
+.task-step-label {
+    font-size: 0.62rem;
+    line-height: 1.3;
+    transition: all 0.25s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-step-badge {
+    font-size: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0 5px;
+    border-radius: 100px;
+    flex-shrink: 0;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* ——— 状态：pending ——— */
+.task-step--pending .task-step-dot {
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid rgba(255,255,255,0.1);
+}
+.task-step--pending .task-step-line {
+    background: rgba(255,255,255,0.05);
+}
+.task-step--pending .task-step-label {
+    color: var(--text-faint);
+    opacity: 0.45;
+}
+
+/* ——— 状态：active ——— */
+.task-step--active .task-step-dot {
+    background: #f59e0b;
+    border: 1.5px solid #f59e0b;
+    box-shadow: 0 0 8px rgba(245,158,11,0.4);
+    animation: activePulse 1.6s ease-in-out infinite;
+}
+@keyframes activePulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+    50% { box-shadow: 0 0 12px rgba(245,158,11,0.6); }
+}
+.task-step--active .task-step-line {
+    background: rgba(245,158,11,0.2);
+}
+.task-step--active .task-step-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.task-step--active .task-step-badge {
+    background: rgba(245,158,11,0.12);
+    color: #fbbf24;
+}
+
+/* ——— 状态：done ——— */
+.task-step--done .task-step-dot {
+    background: #64748b;
+    border: 1.5px solid rgba(100,116,139,0.5);
+}
+.task-step--done .task-step-line {
+    background: rgba(100,116,139,0.25);
+}
+.task-step--done .task-step-label {
+    color: var(--text-faint);
+    opacity: 0.55;
+}
+.task-step--done .task-step-badge {
+    background: rgba(148,163,184,0.1);
+    color: #94a3b8;
+}
+
+/* 全部完成时的完成标记 */
+.task-all-done {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 0 2px;
+    font-size: 0.6rem;
+    color: #94a3b8;
+    opacity: 0.7;
+    animation: allDoneFade 0.5s ease;
+}
+@keyframes allDoneFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 0.7; transform: translateY(0); }
+}
+
+/* ===== 下一步建议卡片 ===== */
+.task-next-suggestions {
+    padding: 6px 0 2px;
+    animation: allDoneFade 0.5s ease;
+}
+.task-next-title {
+    font-size: 0.56rem;
+    color: var(--text-faint);
+    margin-bottom: 5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.task-suggest-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+.task-suggest-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 9px;
+    font-size: 0.58rem;
+    font-weight: 500;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(99,102,241,0.08);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.15);
+    white-space: nowrap;
+}
+.task-suggest-chip:hover {
+    background: rgba(99,102,241,0.15);
+    border-color: rgba(99,102,241,0.3);
+    transform: translateY(-1px);
+}
+.task-suggest-chip--cross {
+    background: rgba(168,85,247,0.08);
+    color: #c084fc;
+    border-color: rgba(168,85,247,0.15);
+}
+.task-suggest-chip--cross:hover {
+    background: rgba(168,85,247,0.15);
+    border-color: rgba(168,85,247,0.3);
+}
+
+/* ===== 底部智能输入框 ===== */
+.pbi-input-area {
+    padding: 8px 10px 10px;
+}
+
+/* 输入框主体 */
+.pbi-box {
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+.pbi-box:focus-within {
+    border-color: rgba(99,102,241,0.25);
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.04);
+    background: rgba(255,255,255,0.035);
+}
+
+.pbi-textarea {
+    width: 100%;
+    min-height: 34px;
+    max-height: 72px;
+    padding: 9px 12px 3px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    line-height: 1.5;
+}
+.pbi-textarea::placeholder {
+    color: var(--text-faint);
+}
+
+/* 底栏 */
+.pbi-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 8px 6px;
+}
+.pbi-left {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+.pbi-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    font-family: inherit;
+}
+.pbi-icon-btn:hover {
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.06);
+}
+
+/* Skill 切换浮出标签 */
+.pbi-skill-float {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.pbi-switch-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.2s;
+    animation: pbiFloatIn 0.3s ease;
+}
+@keyframes pbiFloatIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+.pbi-switch-tag--translate {
+    background: rgba(148,163,184,0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148,163,184,0.25);
+}
+.pbi-switch-tag--livestream {
+    background: rgba(148,163,184,0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148,163,184,0.25);
+}
+.pbi-switch-tag--generate {
+    background: rgba(168,85,247,0.12);
+    color: #c084fc;
+    border: 1px solid rgba(168,85,247,0.25);
+}
+.pbi-switch-tag:hover {
+    transform: translateY(-1px);
+}
+
+/* 提交按钮 */
+.pbi-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, rgba(124,58,237,0.7), rgba(79,70,229,0.7));
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+.pbi-submit:hover {
+    background: linear-gradient(135deg, rgba(124,58,237,0.9), rgba(79,70,229,0.9));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+}
+
+/* 运行中 → 置灰禁用 */
+.pbi-submit--disabled {
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.2);
+    box-shadow: none;
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.5;
+}
+.pbi-submit--disabled:hover {
+    background: rgba(255,255,255,0.04);
+    transform: none;
+    box-shadow: none;
+}
+
+
+/* 📎 / 🔗 按钮点击反馈 */
+.pbi-icon-btn:active {
+    transform: scale(0.9);
+    background: rgba(255,255,255,0.1);
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+    .pbi-input-area {
+        padding: 6px 8px 8px;
+    }
+    .pbi-box {
+        border-radius: 12px;
+    }
+}

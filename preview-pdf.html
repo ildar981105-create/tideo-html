@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tideo AI 产品体验验证框架 — PDF 预览</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px; background: #16213e; border-bottom: 1px solid #2a2a4a;
+  }
+  .header h1 { color: #e94560; font-size: 16px; font-weight: 600; }
+  .header .info { color: #8899aa; font-size: 13px; }
+  .header a {
+    color: #3b82f6; text-decoration: none; font-size: 13px;
+    padding: 6px 16px; border: 1px solid #3b82f6; border-radius: 6px;
+    transition: all 0.2s;
+  }
+  .header a:hover { background: #3b82f6; color: white; }
+  iframe {
+    width: 100%; height: calc(100vh - 52px); border: none;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Tideo AI 产品体验验证框架</h1>
+    <span class="info">可信任 · 可掌控 · 可找到 · 可共鸣</span>
+    <a href="tideo-experience-framework.pdf" download>下载 PDF</a>
+  </div>
+  <iframe src="tideo-experience-framework.pdf"></iframe>
+</body>
+</html>

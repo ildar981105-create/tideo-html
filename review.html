@@ -1,0 +1,2628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计评审工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC',sans-serif;background:#08080c;color:#e2e8f0;display:flex;flex-direction:column}
+
+/* ============ Top Bar ============ */
+.topbar{height:52px;flex-shrink:0;display:flex;align-items:center;padding:0 16px;gap:14px;background:rgba(15,15,22,0.95);border-bottom:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(20px);z-index:100;flex-wrap:nowrap}
+.tb-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.88rem;letter-spacing:-.01em;flex-shrink:0}
+.tb-logo .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#9ca3af,#6b7280);box-shadow:0 0 10px rgba(156,163,175,0.4)}
+.tb-logo .sub{color:#64748b;font-weight:500;font-size:.76rem;margin-left:4px}
+.tb-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.tb-toggles{display:flex;align-items:center;gap:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;font-size:.76rem;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#cbd5e1;transition:all .2s;font-family:inherit}
+.btn:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14);color:#fff}
+.btn.primary{background:linear-gradient(135deg,#6b7280,#374151);border-color:transparent;color:#fff}
+.btn.primary:hover{box-shadow:0 6px 20px rgba(107,114,128,0.35)}
+.btn.active{background:rgba(107,114,128,0.18);border-color:rgba(107,114,128,0.5);color:#d1d5db}
+.btn svg{width:14px;height:14px}
+.btn.btn-icon{padding:6px 8px}
+.btn.btn-icon svg{width:14px;height:14px}
+.btn.btn-sm{height:26px;padding:0 10px;font-size:.72rem}
+.btn.btn-sm svg{width:12px;height:12px}
+.btn.cloud-on{background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.4);color:#6ee7b7}
+.tb-sep{width:1px;height:20px;background:rgba(255,255,255,0.08);margin:0 2px}
+
+/* ============ Main Layout ============ */
+.main{flex:1;display:flex;min-height:0}
+
+/* ============ Left Sidebar ============ */
+.sidebar{width:264px;flex-shrink:0;background:#0b0b12;border-right:1px solid rgba(255,255,255,0.05);overflow-y:auto;padding:16px 0}
+.sb-group{margin-bottom:18px}
+.sb-title{padding:0 16px 8px;font-size:.66rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;transition:all .15s;border-left:2px solid transparent;position:relative}
+.sb-item:hover{background:rgba(255,255,255,0.03)}
+.sb-item.active{background:rgba(107,114,128,0.08);border-left-color:#9ca3af}
+.sb-item.active .sb-name{color:#e2e8f0}
+.sb-item.is-sub{padding-left:28px}
+.sb-item.is-sub .sb-icon{color:#475569}
+.sb-item.is-sub .sb-name{font-size:.76rem;color:#94a3b8}
+.sb-item.is-sub.active .sb-icon{color:#6b7280}
+.sb-item.is-sub::before{content:'';position:absolute;left:22px;top:50%;width:4px;height:1px;background:rgba(255,255,255,0.1)}
+.sb-item.has-sub .sb-name{font-weight:600}
+.sb-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#64748b}
+.sb-item.active .sb-icon{color:#9ca3af}
+.sb-icon svg{width:14px;height:14px}
+.sb-name{font-size:.8rem;color:#cbd5e1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-badge{font-size:.6rem;min-width:18px;height:18px;padding:0 6px;border-radius:9px;background:rgba(107,114,128,0.2);color:#d1d5db;display:flex;align-items:center;justify-content:center;font-weight:600}
+.sb-badge.zero{display:none}
+
+/* ============ Collapse States ============ */
+.sidebar.collapsed{width:0;overflow:hidden;border-right:none}
+.rpanel.collapsed{width:0;overflow:hidden;border-left:none}
+.sidebar.collapsed .sb-group,
+.rpanel.collapsed .rp-head,
+.rpanel.collapsed .rp-filter,
+.rpanel.collapsed .rp-list{display:none}
+
+/* ============ Center Preview ============ */
+.preview{flex:1;position:relative;background:#08080c;overflow:hidden;min-width:0}
+.pv-frame{width:100%;height:100%;border:none;background:#fff;display:block}
+.pv-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#475569;font-size:.88rem;gap:14px}
+
+/* Annotation layer */
+.anno-layer{position:absolute;inset:0;pointer-events:none;z-index:10}
+.anno-layer.active{background:rgba(156,163,175,0.04);box-shadow:inset 0 0 0 2px rgba(156,163,175,0.35)}
+.anno-layer.active::before{content:'标注模式 · 点击放置备注 · Esc 退出 · A 切换';position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(75,85,99,0.95);color:#fff;font-size:.72rem;padding:6px 14px;border-radius:6px;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,0.4);pointer-events:none;z-index:18;white-space:nowrap}
+/* iframe 在标注模式下的视觉光标提示 */
+.preview.anno-on .pv-frame{cursor:crosshair}
+
+/* Pin on preview */
+.pin{position:absolute;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:700;cursor:pointer;transform:translate(-50%,-50%);box-shadow:0 3px 12px rgba(0,0,0,0.5),0 0 0 3px rgba(255,255,255,0.9);transition:all .2s;pointer-events:auto;z-index:20}
+.pin:hover{transform:translate(-50%,-50%) scale(1.15)}
+.pin.flash{animation:pinFlash 1.4s ease-out}
+@keyframes pinFlash{0%,100%{box-shadow:0 3px 12px rgba(0,0,0,0.5),0 0 0 3px rgba(255,255,255,0.9)}50%{box-shadow:0 3px 12px rgba(0,0,0,0.5),0 0 0 6px rgba(250,204,21,0.9),0 0 30px rgba(250,204,21,0.6)}}
+.pin.t-interact{background:#3b82f6}
+.pin.t-bug{background:#ef4444}
+.pin.t-suggest{background:#f59e0b}
+.pin.t-intent{background:#6b7280}
+
+/* Hover highlight on target element (inside iframe via overlay) */
+.hover-outline{position:absolute;pointer-events:none;border:2px solid rgba(156,163,175,0.85);border-radius:4px;box-shadow:0 0 0 2px rgba(156,163,175,0.2);z-index:15;transition:all .12s}
+.hover-label{position:absolute;pointer-events:none;background:rgba(75,85,99,0.95);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:4px;font-weight:500;z-index:16;white-space:nowrap;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+
+/* Anno row states */
+.anno.orphan{opacity:.6}
+.anno-target{font-size:.66rem;color:#9ca3af;margin-top:4px;font-family:'SF Mono',Monaco,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anno-target.orphan{color:#64748b}
+.anno-orphan-tag{display:inline-block;font-size:.58rem;padding:1px 6px;border-radius:4px;background:rgba(100,116,139,0.15);color:#94a3b8;margin-left:6px;vertical-align:middle}
+
+/* 右侧分组 */
+.rp-group{margin:0 0 4px}
+.rp-group-hd{display:flex;align-items:center;gap:8px;padding:10px 16px 6px;font-size:.7rem;font-weight:700;color:#9ca3af;letter-spacing:.02em;background:rgba(156,163,175,0.04);position:sticky;top:0;z-index:2;cursor:pointer;user-select:none}
+.rp-group-hd::before{content:'';width:3px;height:12px;background:#9ca3af;border-radius:2px}
+.rp-group-hd.is-other{color:#64748b}
+.rp-group-hd.is-other::before{background:#475569}
+.rp-group-hd.current{color:#9ca3af;background:rgba(156,163,175,0.06)}
+.rp-group-hd.current::before{background:#9ca3af}
+.rp-group-hd .cnt{margin-left:auto;font-size:.66rem;color:#475569;font-weight:500}
+.rp-group-hd .caret{width:10px;height:10px;transition:transform .2s;flex-shrink:0}
+.rp-group.collapsed .caret{transform:rotate(-90deg)}
+.rp-group.collapsed .rp-group-body{display:none}
+.rp-group-empty{padding:14px 16px;font-size:.72rem;color:#475569;font-style:italic}
+
+.anno.current-page{background:rgba(156,163,175,0.05)}
+.anno.current-page:hover{background:rgba(156,163,175,0.09)}
+
+/* Pin Editor popup */
+.pin-pop{position:absolute;width:280px;background:#111119;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:30;pointer-events:auto}
+.pp-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.pp-tag{font-size:.65rem;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);color:#94a3b8;transition:all .15s}
+.pp-tag:hover{border-color:rgba(255,255,255,0.18)}
+.pp-tag.on.t-interact{background:rgba(59,130,246,0.2);border-color:#3b82f6;color:#93c5fd}
+.pp-tag.on.t-bug{background:rgba(239,68,68,0.2);border-color:#ef4444;color:#fca5a5}
+.pp-tag.on.t-suggest{background:rgba(245,158,11,0.2);border-color:#f59e0b;color:#fcd34d}
+.pp-tag.on.t-intent{background:rgba(156,163,175,0.2);border-color:#9ca3af;color:#e2e8f0}
+.pp-text{width:100%;min-height:70px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;color:#e2e8f0;font-size:.8rem;font-family:inherit;resize:vertical;outline:none;transition:border-color .15s}
+.pp-text:focus{border-color:rgba(156,163,175,0.5)}
+.pp-act{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+.pp-act .btn{height:28px;padding:0 10px;font-size:.72rem}
+.pp-del{color:#f87171!important;border-color:rgba(239,68,68,0.2)!important;background:rgba(239,68,68,0.06)!important;margin-right:auto}
+
+/* ============ Right Panel ============ */
+.rpanel{width:320px;flex-shrink:0;background:#0b0b12;border-left:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;overflow:hidden}
+.rp-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between}
+.rp-title{font-size:.82rem;font-weight:700;color:#e2e8f0}
+.rp-count{font-size:.68rem;color:#64748b}
+.rp-filter{display:flex;gap:4px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);overflow-x:auto}
+.rp-filter .chip{font-size:.66rem;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid transparent;background:rgba(255,255,255,0.04);color:#94a3b8;white-space:nowrap;transition:all .15s}
+.rp-filter .chip:hover{background:rgba(255,255,255,0.08)}
+.rp-filter .chip.on{background:rgba(107,114,128,0.15);border-color:rgba(107,114,128,0.4);color:#d1d5db}
+.rp-filter .chip-scope{margin-left:auto;display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.08)}
+.rp-filter .chip-scope[data-scope="current"]{background:rgba(107,114,128,0.15);border-color:rgba(107,114,128,0.4);color:#d1d5db}
+.rp-list{flex:1;overflow-y:auto;padding:8px 0}
+.rp-empty{padding:40px 20px;text-align:center;color:#475569;font-size:.78rem;line-height:1.7}
+.rp-empty .big{font-size:.88rem;color:#94a3b8;margin-bottom:6px;font-weight:600}
+
+.anno{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .15s;display:flex;gap:10px}
+.anno:hover{background:rgba(255,255,255,0.03)}
+.anno-num{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.66rem;font-weight:700}
+.anno-num.t-interact{background:#3b82f6}
+.anno-num.t-bug{background:#ef4444}
+.anno-num.t-suggest{background:#f59e0b}
+.anno-num.t-intent{background:#6b7280}
+.anno-body{flex:1;min-width:0}
+.anno-type{font-size:.62rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.anno-type.t-interact{color:#60a5fa}
+.anno-type.t-bug{color:#f87171}
+.anno-type.t-suggest{color:#fbbf24}
+.anno-type.t-intent{color:#c084fc}
+.anno-text{font-size:.78rem;color:#cbd5e1;line-height:1.5;word-break:break-word}
+.anno-meta{font-size:.66rem;color:#475569;margin-top:4px}
+
+/* Export Modal */
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal-mask.open{display:flex}
+.modal{width:min(720px,90vw);max-height:80vh;background:#111119;border:1px solid rgba(255,255,255,0.1);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.modal-h{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between}
+.modal-h h3{font-size:.96rem;font-weight:700}
+.modal-b{flex:1;overflow:auto;padding:16px 20px}
+.modal-b textarea{width:100%;min-height:380px;background:#08080c;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;color:#cbd5e1;font-family:'SF Mono','Monaco',Consolas,monospace;font-size:.78rem;line-height:1.6;resize:vertical;outline:none}
+.modal-f{padding:12px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:8px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(17,17,25,0.95);border:1px solid rgba(107,114,128,0.4);color:#e2e8f0;padding:10px 18px;border-radius:8px;font-size:.8rem;opacity:0;pointer-events:none;transition:all .3s;z-index:2000;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.12)}
+
+@media (max-width:900px){
+    .sidebar{width:200px}
+    .rpanel{width:260px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ Top Bar ============ -->
+<div class="topbar">
+    <a href="../hub.html" class="tb-back" title="返回产品中心" style="display:flex;align-items:center;gap:4px;color:#94a3b8;text-decoration:none;font-size:.78rem;padding:6px 8px;border-radius:6px;transition:background .15s;flex-shrink:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </a>
+    <div class="tb-logo">
+        <span class="dot"></span> 设计评审工具
+    </div>
+    <select id="tbVersion" title="切换评审版本" style="height:28px;padding:0 8px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:rgba(255,255,255,0.04);color:#e2e8f0;font-size:.75rem;cursor:pointer;outline:none;flex-shrink:0">
+        <option value="html">HTML 版（visual1）</option>
+        <option value="react">React 版（react1）</option>
+    </select>
+    <button class="btn btn-sm" id="btnCloud" title="云端同步设置">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
+        <span id="cloudStatus">本地</span>
+    </button>
+    <div class="tb-actions">
+        <button class="btn" id="btnAnno" title="标注模式 (A 切换 / C 进入并展开评论)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            标注模式
+        </button>
+        <button class="btn" id="btnReload" title="刷新预览">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            刷新
+        </button>
+        <button class="btn" id="btnOpen" title="新窗口打开">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            新窗口
+        </button>
+        <button class="btn primary" id="btnExport" title="导出 Markdown">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            导出
+        </button>
+    </div>
+    <div class="tb-toggles">
+        <button class="btn btn-icon" id="btnToggleLeft" title="收起/展开左侧目录 (⌘[)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+        </button>
+        <button class="btn btn-icon" id="btnToggleRight" title="收起/展开右侧评论 (⌘])">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
+        </button>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- ============ Left: Sidebar ============ -->
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <!-- ============ Center: Preview ============ -->
+    <div class="preview" id="preview">
+        <div class="pv-empty" id="pvEmpty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
+            <div>从左侧选择一个页面开始</div>
+        </div>
+        <iframe class="pv-frame" id="pvFrame" style="display:none"></iframe>
+        <div class="anno-layer" id="annoLayer"></div>
+    </div>
+
+    <!-- ============ Right: Comments ============ -->
+    <aside class="rpanel" id="rpanel">
+        <div class="rp-head">
+            <div class="rp-title">评论与标注</div>
+            <div class="rp-count" id="rpCount">0 条</div>
+        </div>
+        <div class="rp-filter">
+            <span class="chip on" data-filter="all">全部</span>
+            <span class="chip" data-filter="interact">交互</span>
+            <span class="chip" data-filter="bug">问题</span>
+            <span class="chip" data-filter="suggest">建议</span>
+            <span class="chip" data-filter="intent">设计意图</span>
+            <span class="chip chip-scope" id="chipScope" data-scope="all" title="切换：显示所有页面 / 仅当前页">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 010 18"/><path d="M12 3a15 15 0 000 18"/></svg>
+                所有页面
+            </span>
+        </div>
+        <div class="rp-list" id="rpList"></div>
+    </aside>
+
+</div>
+
+<!-- ============ Cloud Config Modal ============ -->
+<div class="modal-mask" id="cloudModal">
+    <div class="modal">
+        <div class="modal-h">
+            <h3>云端同步</h3>
+            <button class="btn" onclick="closeCloudModal()">关闭</button>
+        </div>
+        <div class="modal-b" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div>
+                <div style="font-size:.72rem;color:#94a3b8;margin-bottom:6px">用户名（标注显示作者）</div>
+                <input type="text" id="cloudUsername" placeholder="例如：张三" style="width:100%;height:34px;padding:0 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e2e8f0;font-size:.8rem;outline:none">
+            </div>
+            <div>
+                <div style="font-size:.72rem;color:#94a3b8;margin-bottom:6px">云端 API 地址</div>
+                <input type="text" id="cloudApiUrl" placeholder="https://xxx.ap-guangzhou.tencentscf.com" style="width:100%;height:34px;padding:0 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e2e8f0;font-size:.8rem;outline:none">
+            </div>
+            <div id="cloudMsg" style="font-size:.72rem;min-height:16px"></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn" onclick="testCloud()">测试连接</button>
+                <button class="btn primary" onclick="saveCloud()">保存并同步</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Export Modal ============ -->
+<div class="modal-mask" id="exportModal">
+    <div class="modal">
+        <div class="modal-h">
+            <h3>导出评审记录</h3>
+            <button class="btn" onclick="closeExport()">关闭</button>
+        </div>
+        <div class="modal-b">
+            <textarea id="exportText" readonly></textarea>
+        </div>
+        <div class="modal-f">
+            <button class="btn" onclick="downloadExport()">下载 .md 文件</button>
+            <button class="btn primary" onclick="copyExport()">复制到剪贴板</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ Toast ============ -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================
+ * Tideo Design Review Tool (v2 · URL-bound + Component-bound)
+ *
+ * 数据存储：localStorage[tideo_review_v2]
+ * 形状：
+ *   {
+ *     [frameKey]: [  // frameKey = iframe 内部当前的 pathname + search
+ *        {
+ *          id, type, text, createdAt,
+ *          // 组件绑定：优先按选择器找元素
+ *          selector,          // 规范化 CSS 选择器路径
+ *          targetSummary,     // 显示用：tagName + text + id/class 摘要
+ *          xInEl, yInEl,      // 元素内的百分比 0-100，Pin 落在元素哪里
+ *          // 坐标兜底：找不到元素时用
+ *          xInFrame, yInFrame // 整个 iframe 可视区域的百分比
+ *        }
+ *     ]
+ *   }
+ *
+ * 迁移：旧数据 tideo_review_v1 按"pageKey"存 {x,y}，会一次性搬到 v2 下 fallback 坐标。
+ * ================================================ */
+(function(){
+'use strict';
+
+/* ---------- Page Catalog ---------- */
+const PAGES = [
+    { group:'创作工具', items:[
+        { key:'create',       file:'create.html',           name:'创作入口',    desc:'首页 · 技能卡片' },
+        { key:'translate-v8', file:'translate-v8.html',     name:'视频译制',    desc:'等待上传视频',
+          sub:[
+            { key:'finetune-erase',    file:'finetune-erase.html',    name:'擦除',     desc:'去除水印、字幕、Logo',
+              aliasKey:'translate-v8.html?finetune=1&feat_erase=1&feat_subtitle=1&feat_voice=1&tab=erase' },
+            { key:'finetune-subtitle', file:'finetune-subtitle.html', name:'字幕',     desc:'翻译文本与样式',
+              aliasKey:'translate-v8.html?finetune=1&feat_erase=1&feat_subtitle=1&feat_voice=1&tab=subtitle' },
+            { key:'finetune-voice',    file:'finetune-voice.html',    name:'配音',     desc:'音色选择与语速',
+              aliasKey:'translate-v8.html?finetune=1&feat_erase=1&feat_subtitle=1&feat_voice=1&tab=voice' },
+          ]
+        },
+        { key:'livestream-v3',file:'livestream-v3.html',    name:'直播剪辑',    desc:'精调直入版' },
+        { key:'generate',     file:'generate.html',         name:'视频制作',    desc:'等待输入 prompt' },
+        { key:'result',       file:'result.html',           name:'任务记录',    desc:'作品列表' },
+    ]},
+];
+
+const TYPE_META = {
+    interact: { label:'交互', color:'#3b82f6' },
+    bug:      { label:'问题', color:'#ef4444' },
+    suggest:  { label:'建议', color:'#f59e0b' },
+    intent:   { label:'设计意图', color:'#6b7280' },
+};
+
+const STORAGE_KEY = 'tideo_review_v2';
+const OLD_KEY     = 'tideo_review_v1';
+const CLOUD_CFG_KEY = 'review_cloud_cfg';
+const CLOUD_API_DEFAULT = 'https://1306264703-7g8rubb731.ap-guangzhou.tencentscf.com';
+
+/* ---------- Cloud Config ---------- */
+let cloud = loadCloudCfg();
+
+function loadCloudCfg(){
+    try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY) || '{}'); }
+    catch(e){ return {}; }
+}
+function saveCloudCfg(cfg){
+    cloud = cfg;
+    localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
+    updateCloudBtn();
+}
+function cloudApiUrl(){ return cloud.apiUrl || ''; }
+function cloudUsername(){ return cloud.username || '匿名'; }
+function hasCloud(){ return !!(cloud.apiUrl); }
+
+function updateCloudBtn(){
+    const btn = $('cloudStatus');
+    if(!btn) return;
+    if(hasCloud()){
+        btn.textContent = cloud.username || '已连接';
+        $('btnCloud').classList.add('cloud-on');
+    } else {
+        btn.textContent = '本地';
+        $('btnCloud').classList.remove('cloud-on');
+    }
+}
+
+/* ---------- SSRF 防御：base URL 与 path 严格校验 ---------- */
+// 路径白名单 — 写死成常量，cloudFetch 通过 action 参数选择，禁止外部传入任意 path
+const CLOUD_ENDPOINTS = Object.freeze({
+    ping: '/review/ping',
+    save: '/review/save'
+});
+
+// 协议白名单
+const ALLOWED_PROTOCOLS = Object.freeze(['https:', 'http:']); // http 仅在 localhost 开发场景放行
+
+// 内网 / 链路本地 / 元数据 / 回环地址（生产环境禁止访问）
+const HOST_BLOCKLIST_RE = new RegExp(
+    '^(' +
+    '127\\.\\d+\\.\\d+\\.\\d+' +              // 127/8 回环
+    '|10\\.\\d+\\.\\d+\\.\\d+' +              // 10/8 内网
+    '|192\\.168\\.\\d+\\.\\d+' +              // 192.168/16 内网
+    '|172\\.(1[6-9]|2\\d|3[01])\\.\\d+\\.\\d+'+ // 172.16/12 内网
+    '|169\\.254\\.\\d+\\.\\d+' +              // 169.254/16 链路本地（含云元数据）
+    '|100\\.6[4-9]\\.\\d+\\.\\d+' +           // 100.64/10 CGN
+    '|100\\.[7-9]\\d\\.\\d+\\.\\d+' +
+    '|100\\.1[01]\\d\\.\\d+\\.\\d+' +
+    '|100\\.12[0-7]\\.\\d+\\.\\d+' +
+    '|0\\.0\\.0\\.0' +                        // 全零地址
+    '|::1?' +                                  // IPv6 回环
+    '|fc[0-9a-f]{2}:.*' +                      // IPv6 唯一本地（fc00::/7）
+    '|fe80:.*' +                               // IPv6 链路本地
+    '|metadata\\.google\\.internal' +
+    '|metadata\\.tencentyun\\.com' +
+    '|metadata\\.aliyuncs\\.com' +
+    '|169\\.254\\.169\\.254' +
+    ')
+/* ---------- State ---------- */
+let state = loadAll();
+migrateV1();
+
+let currentPage   = null;  // 侧栏选中的 PAGES.key
+let currentFrameKey = null;  // iframe 里真实 URL 对应的存储 key
+let annoMode      = false;
+let activeFilter  = 'all';
+let scopeMode     = 'all';   // 'all' = 显示所有页面的备注；'current' = 仅当前页
+let openingPin    = null;
+let hoverOutline  = null;
+let pendingJump   = null;    // { frameKey, annoId }  跨页跳转后的定位目标
+let hoverLabel    = null;
+let iframeClickHandler = null;
+let iframeMoveHandler  = null;
+let iframeScrollRaf    = null;
+
+/* ---------- Elements ---------- */
+const $ = id => document.getElementById(id);
+const sidebar   = $('sidebar');
+const rpanel    = $('rpanel');
+const pvFrame   = $('pvFrame');
+const pvEmpty   = $('pvEmpty');
+const annoLayer = $('annoLayer');
+const rpList    = $('rpList');
+const rpCount   = $('rpCount');
+const btnAnno   = $('btnAnno');
+
+/* ---------- Storage ---------- */
+function loadAll(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch(e){ return {}; }
+}
+function saveAll(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn('保存失败', e); }
+    // 云端异步同步（不阻塞）
+    if(hasCloud()){
+        syncToCloud().catch(e => console.warn('云端同步失败', e));
+    }
+}
+function migrateV1(){
+    let old;
+    try { old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null'); }
+    catch(e){ old = null; }
+    if(!old) return;
+    // 旧 key 是 PAGES.key，映射回对应的 iframe URL 作为新 key
+    Object.keys(old).forEach(pk => {
+        const p = findPage(pk);
+        if(!p) return;
+        const frameKey = normalizeFrameKey(p.file);
+        if(!state[frameKey]) state[frameKey] = [];
+        (old[pk] || []).forEach(a => {
+            // 旧格式只有 {x,y}，升级为 xInFrame/yInFrame
+            state[frameKey].push({
+                id: a.id,
+                type: a.type,
+                text: a.text,
+                createdAt: a.createdAt,
+                selector: null,
+                targetSummary: '',
+                xInEl: 50,
+                yInEl: 50,
+                xInFrame: typeof a.x === 'number' ? a.x : 50,
+                yInFrame: typeof a.y === 'number' ? a.y : 50,
+            });
+        });
+    });
+    saveAll();
+    localStorage.removeItem(OLD_KEY);
+    console.log('[Review] 已迁移 v1 → v2 数据');
+}
+function getAnnos(frameKey){
+    if(!state[frameKey]) state[frameKey] = [];
+    return state[frameKey];
+}
+
+/* ---------- URL helpers ---------- */
+function normalizeFrameKey(href){
+    // 入参可以是完整 URL 或相对路径；出参是"pathname最后一段 + search"
+    if(!href) return '';
+    try {
+        const u = new URL(href, location.origin + location.pathname);
+        // 只取最后一段文件名 + query，忽略 hash 和目录差异
+        const seg = u.pathname.split('/').filter(Boolean).pop() || '';
+        return seg + (u.search || '');
+    } catch(e){
+        return href;
+    }
+}
+function findPage(key){
+    for(const g of PAGES){
+        const it = g.items.find(x => x.key === key);
+        if(it) return it;
+        for(const p of g.items){
+            if(p.sub){
+                const s = p.sub.find(x => x.key === key);
+                if(s) return s;
+            }
+        }
+    }
+    return null;
+}
+function findPageByFrameKey(fk){
+    for(const g of PAGES){
+        const it = g.items.find(x => normalizeFrameKey(x.file) === fk);
+        if(it) return it;
+        for(const p of g.items){
+            if(p.sub){
+                const s = p.sub.find(x => normalizeFrameKey(x.file) === fk || (x.aliasKey && normalizeFrameKey(x.aliasKey) === fk));
+                if(s) return s;
+            }
+        }
+    }
+    return null;
+}
+/**
+ * 把 iframe 内真实 URL 归一化为"规范的 frameKey"（用于存标注）。
+ * 如果 iframe 实际跳到了某个 aliasKey，则映射回对应 file 的 frameKey，
+ * 保证标注分组和徽章按侧栏配置里的 file 为准。
+ */
+function canonicalFrameKey(realHref){
+    const raw = normalizeFrameKey(realHref);
+    for(const g of PAGES){
+        for(const p of g.items){
+            if(p.sub){
+                for(const s of p.sub){
+                    if(s.aliasKey && normalizeFrameKey(s.aliasKey) === raw){
+                        return normalizeFrameKey(s.file);
+                    }
+                }
+            }
+        }
+    }
+    return raw;
+}
+
+/* ---------- Sidebar ---------- */
+function renderSidebar(){
+    sidebar.innerHTML = '';
+    PAGES.forEach(g => {
+        const gEl = document.createElement('div');
+        gEl.className = 'sb-group';
+        gEl.innerHTML = `<div class="sb-title">${g.group}</div>`;
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const count = (state[fk] || []).length;
+            const isSub = it.key.indexOf('/') > -1;
+            const isActive = currentPage === it.key;
+            const hasSub = !!(it.sub && it.sub.length);
+            const row = document.createElement('div');
+            row.className = 'sb-item' + (isActive ? ' active' : '') + (isSub ? ' is-sub' : '') + (hasSub ? ' has-sub' : '');
+            row.innerHTML = `
+                <span class="sb-icon">
+                    ${hasSub
+                        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 15l3 3 3-3"/></svg>`
+                        : isSub
+                        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`
+                        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>`}
+                </span>
+                <span class="sb-name" title="${it.name} · ${it.desc}">${it.name}</span>
+                ${!hasSub ? `<span class="sb-badge ${count === 0 ? 'zero' : ''}">${count}</span>` : ''}
+            `;
+            row.addEventListener('click', () => openPage(it.key));
+            gEl.appendChild(row);
+
+            // 二级菜单
+            if(hasSub){
+                it.sub.forEach(sub => {
+                    const sfk = normalizeFrameKey(sub.file);
+                    const scount = (state[sfk] || []).length;
+                    const sisActive = currentPage === sub.key;
+                    const srow = document.createElement('div');
+                    srow.className = 'sb-item is-sub' + (sisActive ? ' active' : '');
+                    srow.innerHTML = `
+                        <span class="sb-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                        </span>
+                        <span class="sb-name" title="${sub.name} · ${sub.desc}">${sub.name}</span>
+                        <span class="sb-badge ${scount === 0 ? 'zero' : ''}">${scount}</span>
+                    `;
+                    srow.addEventListener('click', () => openPage(sub.key));
+                    gEl.appendChild(srow);
+                });
+            }
+        });
+        sidebar.appendChild(gEl);
+    });
+}
+
+/* ---------- Open Page ---------- */
+function openPage(key){
+    const item = findPage(key);
+    if(!item){ console.warn('[review] openPage: 未找到页面 key=', key); return; }
+    currentPage = key;
+    currentFrameKey = normalizeFrameKey(item.file);  // 预先设置，避免 iframe load 前别的代码用错
+    pvEmpty.style.display = 'none';
+    pvFrame.style.display = 'block';
+    closePinPop();
+
+    // 判断 iframe 当前真实 URL 是否和目标一致；不一致才重载
+    const targetKey = currentFrameKey;
+    let currentRealKey = '';
+    try { currentRealKey = normalizeFrameKey(pvFrame.contentWindow.location.href); } catch(e){}
+
+    if(currentRealKey !== targetKey){
+        // 强制重载
+        pvFrame.src = 'about:blank';
+        setTimeout(() => { pvFrame.src = item.file; }, 20);
+    }
+    // 侧栏高亮立即更新
+    renderSidebar();
+    renderList();
+    renderPins();
+}
+
+/* ---------- iframe onload 感知真实 URL ---------- */
+pvFrame.addEventListener('load', () => {
+    try {
+        const win = pvFrame.contentWindow;
+        const doc = pvFrame.contentDocument;
+        if(!win || !doc){ return; }
+        // 取真实当前 URL
+        const realHref = win.location.href;
+        // 跳过 about:blank 的中间态（openPage 里先清空再设真实 src）
+        if(realHref === 'about:blank' || realHref.indexOf('about:') === 0) return;
+        currentFrameKey = canonicalFrameKey(realHref);
+
+        // 更新当前页 key
+        const matched = findPageByFrameKey(currentFrameKey);
+        if(matched){
+            currentPage = matched.key;
+        }
+        renderSidebar();
+
+        // 绑定 iframe 内部事件
+        bindIframeEvents(win, doc);
+
+        // 渲染当前页的标注
+        renderPins();
+        renderList();
+        applyAnnoMode();
+
+        // 跨页跳转后的定位
+        if(pendingJump && pendingJump.frameKey === currentFrameKey){
+            const annoId = pendingJump.annoId;
+            pendingJump = null;
+            const anno = getAnnos(currentFrameKey).find(x => x.id === annoId);
+            if(anno){
+                // 等 DOM 渲染稳定（v8 有动画）
+                setTimeout(() => focusAnno(anno), 400);
+            }
+        }
+    } catch(e){
+        console.warn('[Review] iframe load hook 失败：', e);
+    }
+});
+
+/* ---------- Iframe 内部事件（点击目标元素 / hover 高亮 / 滚动同步） ---------- */
+function bindIframeEvents(win, doc){
+    // 清理旧绑定
+    if(iframeClickHandler){
+        try { doc.removeEventListener('click', iframeClickHandler, true); } catch(e){}
+    }
+    if(iframeMoveHandler){
+        try { doc.removeEventListener('mousemove', iframeMoveHandler, true); } catch(e){}
+    }
+
+    iframeClickHandler = function(e){
+        if(!annoMode) return;
+        // 拦截默认行为 + 放置 Pin
+        e.preventDefault();
+        e.stopPropagation();
+        const el = e.target;
+        if(!el || el.nodeType !== 1) return;
+
+        const elRect = el.getBoundingClientRect();
+        // 元素内的点击百分比
+        const xInEl = elRect.width  ? ((e.clientX - elRect.left) / elRect.width)  * 100 : 50;
+        const yInEl = elRect.height ? ((e.clientY - elRect.top)  / elRect.height) * 100 : 50;
+        // 对 iframe viewport 的百分比（兜底：找不到元素时用）
+        const frameW = win.innerWidth || 1;
+        const frameH = win.innerHeight || 1;
+        const xInFrame = (e.clientX / frameW) * 100;
+        const yInFrame = (e.clientY / frameH) * 100;
+
+        const anno = {
+            id: 'a_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            type: 'interact',
+            text: '',
+            createdAt: Date.now(),
+            selector: buildSelector(el),
+            targetSummary: summarizeEl(el),
+            xInEl: +xInEl.toFixed(2),
+            yInEl: +yInEl.toFixed(2),
+            xInFrame: +xInFrame.toFixed(2),
+            yInFrame: +yInFrame.toFixed(2),
+        };
+        getAnnos(currentFrameKey).push(anno);
+        saveAll();
+        renderPins();
+        renderList();
+        renderSidebar();
+        setTimeout(() => openPinPop(anno.id, true), 30);
+    };
+
+    iframeMoveHandler = function(e){
+        if(!annoMode){
+            hideHoverOutline();
+            return;
+        }
+        const el = e.target;
+        if(!el || el.nodeType !== 1) return;
+        showHoverOutline(el);
+    };
+
+    try {
+        doc.addEventListener('click', iframeClickHandler, true);
+        doc.addEventListener('mousemove', iframeMoveHandler, true);
+        win.addEventListener('scroll', syncPinsOnScroll, true);
+        win.addEventListener('resize', syncPinsOnScroll);
+    } catch(e){
+        console.warn('[Review] 绑定 iframe 事件失败（跨域？）', e);
+    }
+}
+
+function syncPinsOnScroll(){
+    if(iframeScrollRaf) cancelAnimationFrame(iframeScrollRaf);
+    iframeScrollRaf = requestAnimationFrame(() => {
+        renderPins();
+        iframeScrollRaf = null;
+    });
+}
+
+/* ---------- 选择器生成 ---------- */
+function buildSelector(el){
+    if(!el || el.nodeType !== 1) return null;
+    // 优先 id
+    if(el.id && /^[a-zA-Z_][\w-]*$/.test(el.id)) return '#' + CSS.escape(el.id);
+    // 构造路径，向上追溯
+    const parts = [];
+    let cur = el;
+    const doc = cur.ownerDocument;
+    while(cur && cur.nodeType === 1 && cur !== doc.body && cur !== doc.documentElement){
+        let part = cur.tagName.toLowerCase();
+        // data-* 优先
+        let dataAttr = null;
+        for(const a of cur.attributes){
+            if(a.name.startsWith('data-') && a.value){
+                dataAttr = `[${a.name}="${CSS.escape(a.value)}"]`;
+                break;
+            }
+        }
+        if(dataAttr){
+            part += dataAttr;
+        } else if(cur.id && /^[a-zA-Z_][\w-]*$/.test(cur.id)){
+            return '#' + CSS.escape(cur.id) + (parts.length ? ' > ' + parts.join(' > ') : '');
+        } else if(cur.classList.length){
+            // 取前两个"有意义"的 class（跳过临时 state class）
+            const cls = Array.from(cur.classList)
+                .filter(c => !/^(hover|active|on|flash|vis|open|collapsed|show)$/.test(c))
+                .slice(0, 2);
+            if(cls.length) part += '.' + cls.map(c => CSS.escape(c)).join('.');
+        }
+        // 加 nth-child 保证唯一
+        if(cur.parentElement){
+            const idx = Array.from(cur.parentElement.children).indexOf(cur) + 1;
+            part += ':nth-child(' + idx + ')';
+        }
+        parts.unshift(part);
+        cur = cur.parentElement;
+        if(parts.length >= 6) break; // 最多 6 层，够用
+    }
+    return parts.join(' > ');
+}
+
+function summarizeEl(el){
+    if(!el) return '';
+    const tag = el.tagName.toLowerCase();
+    const id  = el.id ? '#' + el.id : '';
+    const cls = el.classList.length ? '.' + Array.from(el.classList).slice(0,2).join('.') : '';
+    let txt = (el.textContent || '').trim().replace(/\s+/g,' ').slice(0, 20);
+    if(txt && el.textContent.length > 20) txt += '…';
+    return `<${tag}${id}${cls}>` + (txt ? ` "${txt}"` : '');
+}
+
+function findElInFrame(selector){
+    if(!selector) return null;
+    try {
+        const doc = pvFrame.contentDocument;
+        if(!doc) return null;
+        return doc.querySelector(selector);
+    } catch(e){ return null; }
+}
+
+/* ---------- Hover Outline ---------- */
+function showHoverOutline(el){
+    if(!el) return;
+    const frameRect = pvFrame.getBoundingClientRect();
+    const layerRect = annoLayer.getBoundingClientRect();
+    const r = el.getBoundingClientRect();  // iframe viewport 坐标
+    if(r.width < 2 || r.height < 2) return hideHoverOutline();
+
+    // 元素在 iframe viewport 的位置 → 换算到 host viewport → 再到 annoLayer 本地
+    const vpLeft = frameRect.left + r.left;
+    const vpTop  = frameRect.top  + r.top;
+    const localLeft = vpLeft - layerRect.left;
+    const localTop  = vpTop  - layerRect.top;
+
+    if(!hoverOutline){
+        hoverOutline = document.createElement('div');
+        hoverOutline.className = 'hover-outline';
+        annoLayer.appendChild(hoverOutline);
+    }
+    if(!hoverLabel){
+        hoverLabel = document.createElement('div');
+        hoverLabel.className = 'hover-label';
+        annoLayer.appendChild(hoverLabel);
+    }
+    hoverOutline.style.left = localLeft + 'px';
+    hoverOutline.style.top  = localTop  + 'px';
+    hoverOutline.style.width  = r.width  + 'px';
+    hoverOutline.style.height = r.height + 'px';
+    hoverLabel.textContent = summarizeEl(el);
+    hoverLabel.style.left = localLeft + 'px';
+    hoverLabel.style.top = Math.max(localTop - 22, 4) + 'px';
+}
+function hideHoverOutline(){
+    if(hoverOutline){ hoverOutline.remove(); hoverOutline = null; }
+    if(hoverLabel){ hoverLabel.remove(); hoverLabel = null; }
+}
+
+/* ---------- Annotation Mode ---------- */
+function toggleAnno(){
+    if(!currentFrameKey){ toast('请先从左侧选择一个页面'); return; }
+    annoMode = !annoMode;
+    applyAnnoMode();
+}
+function applyAnnoMode(){
+    const previewEl = document.getElementById('preview');
+    if(annoMode){
+        annoLayer.classList.add('active');
+        btnAnno.classList.add('active');
+        if(previewEl) previewEl.classList.add('anno-on');
+    } else {
+        annoLayer.classList.remove('active');
+        btnAnno.classList.remove('active');
+        if(previewEl) previewEl.classList.remove('anno-on');
+        hideHoverOutline();
+        closePinPop();
+    }
+}
+
+/* ---------- Render Pins ---------- */
+function renderPins(){
+    // 清除旧 pin（保留 pop 与 hover）
+    annoLayer.querySelectorAll('.pin').forEach(el => el.remove());
+    if(!currentFrameKey) return;
+    const list = getAnnos(currentFrameKey);
+    const frameRect = pvFrame.getBoundingClientRect();
+    const layerRect = annoLayer.getBoundingClientRect();
+
+    list.forEach((a, idx) => {
+        // 优先按选择器找元素
+        const el = findElInFrame(a.selector);
+        let vpLeft, vpTop, isOrphan = false;
+
+        if(el){
+            const r = el.getBoundingClientRect();
+            if(r.width < 1 && r.height < 1){
+                isOrphan = true;
+            } else {
+                // 元素的 rect 已经是 iframe 内的坐标，等同于"相对 iframe viewport 左上"
+                // iframe 本身的左上角在宿主 viewport 的位置 = frameRect.left/top
+                vpLeft = frameRect.left + r.left + (a.xInEl || 50) / 100 * r.width;
+                vpTop  = frameRect.top  + r.top  + (a.yInEl || 50) / 100 * r.height;
+            }
+        } else {
+            if(typeof a.xInFrame === 'number'){
+                vpLeft = frameRect.left + (a.xInFrame / 100) * frameRect.width;
+                vpTop  = frameRect.top  + (a.yInFrame / 100) * frameRect.height;
+            } else {
+                isOrphan = true;
+            }
+        }
+
+        if(isOrphan) return;
+        // 超出可视区域，不显示
+        if(vpLeft < frameRect.left - 10 || vpLeft > frameRect.right + 10 ||
+           vpTop  < frameRect.top  - 10 || vpTop  > frameRect.bottom + 10){
+            return;
+        }
+
+        // 转换为 annoLayer 本地坐标
+        const localLeft = vpLeft - layerRect.left;
+        const localTop  = vpTop  - layerRect.top;
+
+        const p = document.createElement('div');
+        p.className = 'pin t-' + a.type;
+        p.style.left = localLeft + 'px';
+        p.style.top  = localTop  + 'px';
+        p.textContent = (idx + 1);
+        p.dataset.id = a.id;
+        p.addEventListener('click', ev => {
+            ev.stopPropagation();
+            openPinPop(a.id);
+        });
+        annoLayer.appendChild(p);
+    });
+}
+
+/* ---------- Pin Popup Editor ---------- */
+function openPinPop(annoId, autofocus){
+    closePinPop();
+    const anno = getAnnos(currentFrameKey).find(x => x.id === annoId);
+    if(!anno) return;
+
+    // 找到 Pin 元素来定位 popup
+    const pinEl = annoLayer.querySelector(`.pin[data-id="${annoId}"]`);
+    const pop = document.createElement('div');
+    pop.className = 'pin-pop';
+    const layerRect = annoLayer.getBoundingClientRect();
+    if(pinEl){
+        const pr = pinEl.getBoundingClientRect();  // 这是 viewport 坐标
+        // 换算到 layer 本地坐标（因为 popup 是 layer 的子元素）
+        let popLeft = (pr.right - layerRect.left) + 12;
+        let popTop  = (pr.bottom - layerRect.top) + 8;
+        // 超出容器右边 → 翻到左侧
+        if(popLeft + 280 > layerRect.width - 8) popLeft = (pr.left - layerRect.left) - 12 - 280;
+        if(popTop + 240 > layerRect.height - 8) popTop  = (pr.top - layerRect.top) - 240 - 8;
+        pop.style.left = Math.max(popLeft, 8) + 'px';
+        pop.style.top  = Math.max(popTop, 8) + 'px';
+    } else {
+        // 孤儿 pin 没有 Pin 元素，居中显示 popup
+        pop.style.left = Math.max(layerRect.width/2 - 140, 20) + 'px';
+        pop.style.top  = '120px';
+    }
+
+    pop.innerHTML = `
+        <div class="pp-row">
+            ${Object.keys(TYPE_META).map(t => `<span class="pp-tag t-${t} ${anno.type===t?'on':''}" data-t="${t}">${TYPE_META[t].label}</span>`).join('')}
+        </div>
+        ${anno.targetSummary ? `<div class="anno-target" style="margin:0 0 6px">${escapeHtml(anno.targetSummary)}</div>` : ''}
+        <textarea class="pp-text" placeholder="写下备注…例如：点击此处跳转到 xxx 页面、建议改为 xxx 样式">${anno.text || ''}</textarea>
+        <div class="pp-act">
+            <button class="btn pp-del">删除</button>
+            <button class="btn" data-act="cancel">取消</button>
+            <button class="btn primary" data-act="save">保存</button>
+        </div>
+    `;
+    annoLayer.appendChild(pop);
+    openingPin = { id: annoId, el: pop };
+
+    pop.querySelectorAll('.pp-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            pop.querySelectorAll('.pp-tag').forEach(x => x.classList.remove('on'));
+            tag.classList.add('on');
+            anno.type = tag.dataset.t;
+            const pe = annoLayer.querySelector(`.pin[data-id="${anno.id}"]`);
+            if(pe) pe.className = 'pin t-' + anno.type;
+        });
+    });
+    const ta = pop.querySelector('.pp-text');
+    pop.querySelector('[data-act="cancel"]').addEventListener('click', closePinPop);
+    pop.querySelector('[data-act="save"]').addEventListener('click', () => {
+        anno.text = ta.value.trim();
+        saveAll();
+        renderList();
+        renderSidebar();
+        closePinPop();
+        toast('已保存');
+    });
+    pop.querySelector('.pp-del').addEventListener('click', () => {
+        if(!confirm('删除这条标注？')) return;
+        const list = getAnnos(currentFrameKey);
+        const i = list.findIndex(x => x.id === annoId);
+        if(i >= 0) list.splice(i, 1);
+        saveAll();
+        renderPins();
+        renderList();
+        renderSidebar();
+        closePinPop();
+    });
+    if(autofocus) ta.focus();
+}
+function closePinPop(){
+    if(openingPin){
+        openingPin.el.remove();
+        openingPin = null;
+    }
+}
+
+/* ---------- Right Panel List ---------- */
+function renderList(){
+    rpList.innerHTML = '';
+
+    // 统计：按 frameKey 分组，同时汇总计数
+    const allEntries = [];   // { frameKey, pageInfo, list }
+    // 先按 PAGES 顺序
+    PAGES.forEach(g => {
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const list = state[fk] || [];
+            if(list.length === 0) return;
+            allEntries.push({ frameKey: fk, pageInfo: it, list });
+        });
+    });
+    // 未登记页面（iframe 内部跳转到的）
+    Object.keys(state).forEach(fk => {
+        if(!(state[fk] || []).length) return;
+        if(allEntries.find(e => e.frameKey === fk)) return;
+        allEntries.push({ frameKey: fk, pageInfo: null, list: state[fk] });
+    });
+
+    const totalAll = allEntries.reduce((s,e)=>s+e.list.length,0);
+    const currentCount = currentFrameKey ? (state[currentFrameKey]||[]).length : 0;
+
+    // 计数文案
+    if(scopeMode === 'current'){
+        rpCount.textContent = currentCount + ' 条 · 当前页';
+    } else {
+        rpCount.textContent = totalAll + ' 条 · 全部' + (currentCount ? `（当前 ${currentCount}）` : '');
+    }
+
+    // 过滤 scope
+    const entries = scopeMode === 'current'
+        ? allEntries.filter(e => e.frameKey === currentFrameKey)
+        : allEntries;
+
+    // 过滤 type
+    entries.forEach(e => {
+        e.filtered = activeFilter === 'all' ? e.list : e.list.filter(a => a.type === activeFilter);
+    });
+
+    // 空态
+    const visibleCount = entries.reduce((s,e)=>s+e.filtered.length,0);
+    if(visibleCount === 0){
+        if(totalAll === 0){
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">暂无备注</div>点击顶部"标注模式"<br/>再点击页面里的<b>具体组件</b>放置备注</div>`;
+        } else if(scopeMode === 'current' && currentCount === 0){
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">当前页尚无备注</div>其他页面共 ${totalAll} 条<br/>点右上角切换到"所有页面"查看</div>`;
+        } else {
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">当前筛选无结果</div>换个筛选条件看看</div>`;
+        }
+        return;
+    }
+
+    // 把"当前页"分组置顶（仅在 scope=all 时）
+    if(scopeMode === 'all' && currentFrameKey){
+        entries.sort((a, b) => {
+            if(a.frameKey === currentFrameKey) return -1;
+            if(b.frameKey === currentFrameKey) return 1;
+            return 0;
+        });
+    }
+
+    entries.forEach(e => {
+        if(e.filtered.length === 0) return;
+        const isCurrent = e.frameKey === currentFrameKey;
+        const isOther = !e.pageInfo;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'rp-group';
+        const pageName = e.pageInfo ? e.pageInfo.name : e.frameKey;
+        const pageDesc = e.pageInfo ? e.pageInfo.desc : 'iframe 内跳转到的页面';
+        groupEl.innerHTML = `
+            <div class="rp-group-hd ${isCurrent ? 'current' : ''} ${isOther ? 'is-other' : ''}">
+                <svg class="caret" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span title="${escapeHtml(pageDesc)} · ${escapeHtml(e.frameKey)}">${escapeHtml(pageName)}${isCurrent ? '  · 当前' : ''}</span>
+                <span class="cnt">${e.filtered.length}${e.filtered.length !== e.list.length ? '/' + e.list.length : ''}</span>
+            </div>
+            <div class="rp-group-body"></div>
+        `;
+        const body = groupEl.querySelector('.rp-group-body');
+        const hd = groupEl.querySelector('.rp-group-hd');
+        hd.addEventListener('click', () => groupEl.classList.toggle('collapsed'));
+
+        e.filtered.forEach(a => {
+            // 找到它在 e.list 里的原始序号（用于 Pin 编号）
+            const originalIdx = e.list.indexOf(a);
+            body.appendChild(buildAnnoRow(a, originalIdx, e.frameKey, isCurrent));
+        });
+
+        rpList.appendChild(groupEl);
+    });
+}
+
+function buildAnnoRow(a, idx, frameKey, isCurrent){
+    // 在当前页才能判断元素是否存在（其他页面 iframe 里是别的 document，不能查询）
+    let isOrphan = false;
+    if(isCurrent){
+        isOrphan = !findElInFrame(a.selector);
+    }
+    const row = document.createElement('div');
+    row.className = 'anno' + (isOrphan ? ' orphan' : '') + (isCurrent ? ' current-page' : '');
+    const meta = TYPE_META[a.type] || TYPE_META.interact;
+    const timeStr = formatTime(a.createdAt);
+    row.innerHTML = `
+        <div class="anno-num t-${a.type}">${idx+1}</div>
+        <div class="anno-body">
+            <div class="anno-type t-${a.type}">${meta.label}${isOrphan ? '<span class="anno-orphan-tag">孤儿</span>' : ''}</div>
+            <div class="anno-text">${a.text ? escapeHtml(a.text) : '<span style="color:#475569">（未填写内容）</span>'}</div>
+            ${a.targetSummary ? `<div class="anno-target ${isOrphan ? 'orphan' : ''}" title="${escapeHtml(a.selector || '')}">${escapeHtml(a.targetSummary)}</div>` : ''}
+            <div class="anno-meta">${timeStr}</div>
+        </div>
+    `;
+    row.addEventListener('click', () => {
+        if(!isCurrent){
+            // 跨页跳转
+            jumpToAnno(frameKey, a.id);
+        } else {
+            focusAnno(a);
+        }
+    });
+    return row;
+}
+
+/* 当前页：滚动到元素 + 闪烁 Pin + 打开编辑框 */
+function focusAnno(a){
+    const el = findElInFrame(a.selector);
+    if(!el){
+        toast('这条标注绑定的组件已找不到（页面结构变了）');
+        openPinPop(a.id);
+        return;
+    }
+    try { el.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){}
+    setTimeout(() => {
+        renderPins();
+        const pin = annoLayer.querySelector(`.pin[data-id="${a.id}"]`);
+        if(pin){
+            pin.classList.remove('flash'); void pin.offsetWidth;
+            pin.classList.add('flash');
+            setTimeout(() => pin.classList.remove('flash'), 1500);
+        }
+        openPinPop(a.id);
+    }, 320);
+}
+
+/* 跨页：切 iframe，加载完成后定位 */
+function jumpToAnno(frameKey, annoId){
+    // 在 PAGES 里找回对应的 pageKey
+    const page = findPageByFrameKey(frameKey);
+    if(page){
+        pendingJump = { frameKey, annoId };
+        openPage(page.key);
+        toast('跳转到：' + page.name);
+    } else {
+        // 未登记页面：直接把 iframe src 设成 frameKey
+        pendingJump = { frameKey, annoId };
+        pvFrame.src = frameKey;
+        toast('跳转到未登记页面');
+    }
+}
+
+/* ---------- Filter Chips ---------- */
+// type 筛选（排除 scope chip）
+document.querySelectorAll('.rp-filter .chip[data-filter]').forEach(c => {
+    c.addEventListener('click', () => {
+        document.querySelectorAll('.rp-filter .chip[data-filter]').forEach(x => x.classList.remove('on'));
+        c.classList.add('on');
+        activeFilter = c.dataset.filter;
+        renderList();
+    });
+});
+// scope 切换：all ↔ current
+(function(){
+    const chip = document.getElementById('chipScope');
+    if(!chip) return;
+    const svgHtml = chip.querySelector('svg').outerHTML;
+    chip.addEventListener('click', () => {
+        if(scopeMode === 'all'){
+            scopeMode = 'current';
+            chip.setAttribute('data-scope', 'current');
+            chip.innerHTML = svgHtml + ' 仅当前页';
+        } else {
+            scopeMode = 'all';
+            chip.setAttribute('data-scope', 'all');
+            chip.innerHTML = svgHtml + ' 所有页面';
+        }
+        renderList();
+    });
+})();
+
+/* ---------- Top Buttons ---------- */
+btnAnno.addEventListener('click', toggleAnno);
+$('btnReload').addEventListener('click', () => {
+    if(!currentFrameKey){ toast('请先选择页面'); return; }
+    try {
+        // 直接刷新 iframe 当前 URL（保留内部导航状态丢弃）
+        pvFrame.contentWindow.location.reload();
+    } catch(e){
+        const item = findPage(currentPage);
+        if(item){ pvFrame.src = 'about:blank'; setTimeout(() => pvFrame.src = item.file, 60); }
+    }
+});
+$('btnOpen').addEventListener('click', () => {
+    let url = '';
+    try { url = pvFrame.contentWindow.location.href; } catch(e){}
+    if(!url){
+        const item = findPage(currentPage);
+        url = item ? item.file : '';
+    }
+    if(!url){ toast('请先选择页面'); return; }
+    window.open(url, '_blank');
+});
+$('btnExport').addEventListener('click', openExport);
+
+/* ---------- Version Switch (顶栏下拉) ---------- */
+(function(){
+    var sel = document.getElementById('tbVersion');
+    if (!sel) return;
+    // 当前页面所在路径决定默认值
+    var path = window.location.pathname;
+    if (path.indexOf('tideo-react') !== -1) sel.value = 'react';
+    else sel.value = 'html';
+    sel.addEventListener('change', function(){
+        if (sel.value === 'react') {
+            window.location.href = '../tideo-react/dist/review.html';
+        } else {
+            window.location.href = '../tideo-html/review.html';
+        }
+    });
+})();
+
+/* ---------- Toggle Panels ---------- */
+$('btnToggleLeft').addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    $('btnToggleLeft').classList.toggle('active', sidebar.classList.contains('collapsed'));
+});
+$('btnToggleRight').addEventListener('click', () => {
+    rpanel.classList.toggle('collapsed');
+    $('btnToggleRight').classList.toggle('active', rpanel.classList.contains('collapsed'));
+});
+
+/* ---------- Cloud Modal ---------- */
+$('btnCloud').addEventListener('click', () => {
+    $('cloudModal').classList.add('open');
+    $('cloudUsername').value = cloud.username || '';
+    $('cloudApiUrl').value = cloud.apiUrl || CLOUD_API_DEFAULT;
+    $('cloudMsg').textContent = '';
+});
+
+function closeCloudModal(){
+    $('cloudModal').classList.remove('open');
+}
+window.closeCloudModal = closeCloudModal;
+
+async function testCloud(){
+    const url = $('cloudApiUrl').value.trim();
+    const msg = $('cloudMsg');
+    if(!url){ msg.style.color = '#f87171'; msg.textContent = '请填写 API 地址'; return; }
+    msg.style.color = '#94a3b8'; msg.textContent = '测试中...';
+    try {
+        const r = await cloudFetch('ping', null);
+        if(r.ok){
+            msg.style.color = '#6ee7b7'; msg.textContent = '连接成功';
+        } else {
+            msg.style.color = '#f87171'; msg.textContent = '连接失败：' + (r.error || '未知错误');
+        }
+    } catch(e){
+        msg.style.color = '#f87171';
+        // 区分安全拦截 vs 网络错误：buildSafeRequestUrl 抛的错前缀清晰，network 错给"网络错误"前缀
+        const m = (e && e.message) || String(e);
+        msg.textContent = /SSRF|协议|内网|白名单|非法|地址/.test(m) ? m : '网络错误：' + m;
+    }
+}
+
+async function saveCloud(){
+    const username = $('cloudUsername').value.trim() || '匿名';
+    const apiUrl = $('cloudApiUrl').value.trim();
+    const msg = $('cloudMsg');
+    if(!apiUrl){ msg.style.color = '#f87171'; msg.textContent = '请填写 API 地址'; return; }
+    // 写入 localStorage 前先校验，避免持久化恶意/内网地址
+    try { buildSafeRequestUrl(apiUrl.replace(/\/$/, ''), 'ping'); }
+    catch(e){ msg.style.color = '#f87171'; msg.textContent = e.message; return; }
+    saveCloudCfg({ username, apiUrl });
+    msg.style.color = '#6ee7b7'; msg.textContent = '已保存';
+    setTimeout(closeCloudModal, 800);
+    await syncToCloud();
+}
+
+async function syncToCloud(){
+    if(!hasCloud()) return;
+    try {
+        await cloudFetch('save', {
+            name: cloud.username || '我的评审',
+            creator: cloud.username || '匿名',
+            pageKey: currentPage || '',
+            annotations: state[currentFrameKey] || []
+        });
+    } catch(e){ console.warn('云端同步失败', e); }
+}
+
+window.testCloud = testCloud;
+window.saveCloud = saveCloud;
+
+/* ---------- Keyboard ---------- */
+document.addEventListener('keydown', e => {
+    const t = e.target.tagName;
+    if(t === 'INPUT' || t === 'TEXTAREA') return;
+    const isMod = e.metaKey || e.ctrlKey;  // macOS Cmd 或 Win/Linux Ctrl
+
+    // ===== Cmd/Ctrl + [ ] \ =====
+    if(isMod && e.key === '['){
+        e.preventDefault();
+        $('btnToggleLeft').click();
+        return;
+    }
+    if(isMod && e.key === ']'){
+        e.preventDefault();
+        $('btnToggleRight').click();
+        return;
+    }
+    if(isMod && e.key === '\\'){
+        e.preventDefault();
+        // 全部展示/全部隐藏：若任一折叠则全部展开，否则全部折叠
+        const anyCollapsed = sidebar.classList.contains('collapsed') || rpanel.classList.contains('collapsed');
+        if(anyCollapsed){
+            sidebar.classList.remove('collapsed');
+            rpanel.classList.remove('collapsed');
+        } else {
+            sidebar.classList.add('collapsed');
+            rpanel.classList.add('collapsed');
+        }
+        $('btnToggleLeft').classList.toggle('active', sidebar.classList.contains('collapsed'));
+        $('btnToggleRight').classList.toggle('active', rpanel.classList.contains('collapsed'));
+        return;
+    }
+
+    // ===== 普通字母快捷键（不带 modifier）=====
+    if(isMod) return;  // 其他 Cmd/Ctrl 组合交给浏览器
+
+    if(e.key === 'a' || e.key === 'A'){ toggleAnno(); e.preventDefault(); return; }
+    if(e.key === 'c' || e.key === 'C'){
+        // C：进入标注模式 + 确保右侧评论展开
+        e.preventDefault();
+        if(rpanel.classList.contains('collapsed')){
+            rpanel.classList.remove('collapsed');
+            $('btnToggleRight').classList.remove('active');
+        }
+        if(!annoMode) toggleAnno();
+        return;
+    }
+    if(e.key === 'e' || e.key === 'E'){ openExport(); e.preventDefault(); return; }
+    if(e.key === 'Escape'){
+        if(openingPin) closePinPop();
+        else if(annoMode){ annoMode = false; applyAnnoMode(); }
+    }
+});
+
+/* ---------- Window resize: 同步 Pin 位置 ---------- */
+window.addEventListener('resize', () => {
+    if(iframeScrollRaf) cancelAnimationFrame(iframeScrollRaf);
+    iframeScrollRaf = requestAnimationFrame(() => { renderPins(); iframeScrollRaf = null; });
+});
+
+/* ---------- Export ---------- */
+function buildMarkdown(){
+    const bodyLines = [];
+    let total = 0;
+    // 按 PAGES 顺序输出
+    PAGES.forEach(g => {
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const list = state[fk] || [];
+            if(list.length === 0) return;
+            total += list.length;
+            bodyLines.push(`## ${it.name}  \`${it.file}\``);
+            bodyLines.push('');
+            list.forEach((a, idx) => {
+                const meta = TYPE_META[a.type] || TYPE_META.interact;
+                const txt = a.text || '（未填写）';
+                const target = a.targetSummary ? `  \`${a.targetSummary}\`` : '';
+                bodyLines.push(`${idx+1}. **[${meta.label}]** ${txt}${target}`);
+            });
+            bodyLines.push('');
+        });
+    });
+    // 未登记到 PAGES 的（iframe 内跳转到的页面）
+    const orphanKeys = Object.keys(state).filter(fk => !findPageByFrameKey(fk) && (state[fk]||[]).length > 0);
+    if(orphanKeys.length){
+        bodyLines.push('## 其他页面');
+        bodyLines.push('');
+        orphanKeys.forEach(fk => {
+            bodyLines.push(`### \`${fk}\``);
+            (state[fk]||[]).forEach((a, idx) => {
+                total += 1;
+                const meta = TYPE_META[a.type] || TYPE_META.interact;
+                const target = a.targetSummary ? `  \`${a.targetSummary}\`` : '';
+                bodyLines.push(`${idx+1}. **[${meta.label}]** ${a.text || '（未填写）'}${target}`);
+            });
+            bodyLines.push('');
+        });
+    }
+    const header = [
+        '# Tideo 设计评审记录',
+        '',
+        '> 导出时间：' + new Date().toLocaleString('zh-CN'),
+        '> 共 ' + total + ' 条标注',
+        ''
+    ];
+    if(total === 0) bodyLines.push('_暂无标注_');
+    return header.concat(bodyLines).join('\n');
+}
+function openExport(){ $('exportText').value = buildMarkdown(); $('exportModal').classList.add('open'); }
+window.closeExport    = () => $('exportModal').classList.remove('open');
+window.copyExport     = () => {
+    const ta = $('exportText'); ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch(e){ toast('复制失败，请手动选择'); }
+};
+window.downloadExport = () => {
+    const md = $('exportText').value;
+    const blob = new Blob([md], { type:'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tideo-review-' + new Date().toISOString().slice(0,10) + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('已下载');
+};
+
+/* ---------- Utils ---------- */
+function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function formatTime(ts){
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function toast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+/* ---------- Init ---------- */
+updateCloudBtn();
+renderSidebar();
+renderList();
+const urlKey = new URLSearchParams(location.search).get('page');
+if(urlKey && findPage(urlKey)){
+    openPage(urlKey);
+} else {
+    openPage('create');
+}
+
+})();
+</script>
+</body>
+</html>
+,
+    'i'
+);
+
+function isLocalhostHost(h){
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+}
+
+/**
+ * 把用户填的 apiUrl 解构、严格校验、再用结构化字段重新构造一个干净的 URL。
+ * 这样污点（taint）从字符串拼接被打断 — 静态扫描器看到的是
+ * `new URL()` + 显式属性赋值，而不是 fetch(userInput + userInput)。
+ */
+function buildSafeRequestUrl(rawBase, action){
+    // ===== Step 1: action → 路径（白名单常量，绝不让外部 path 进入 fetch）=====
+    if(!Object.prototype.hasOwnProperty.call(CLOUD_ENDPOINTS, action)){
+        throw new Error('请求 action 不在白名单内');
+    }
+    const safePath = CLOUD_ENDPOINTS[action]; // 来自冻结常量，非用户可控
+
+    // ===== Step 2: base URL 解析 =====
+    if(!rawBase || typeof rawBase !== 'string'){
+        throw new Error('未配置云端 API 地址');
+    }
+    let parsed;
+    try { parsed = new URL(rawBase); }
+    catch(e){ throw new Error('云端 API 地址格式非法'); }
+
+    // ===== Step 3: 协议白名单 =====
+    if(ALLOWED_PROTOCOLS.indexOf(parsed.protocol) === -1){
+        throw new Error('仅允许 http(s) 协议');
+    }
+    if(parsed.protocol === 'http:' && !isLocalhostHost(parsed.hostname)){
+        throw new Error('http 协议仅允许用于 localhost 开发环境');
+    }
+
+    // ===== Step 4: 阻止 URL 用户名/密码段（绕过 SSRF 校验的常见手法）=====
+    if(parsed.username || parsed.password){
+        throw new Error('云端 API 地址不允许包含用户名/密码');
+    }
+
+    // ===== Step 5: 阻止内网 / 元数据 / 链路本地地址 =====
+    const host = parsed.hostname.toLowerCase();
+    if(!isLocalhostHost(host) && HOST_BLOCKLIST_RE.test(host)){
+        throw new Error('云端 API 地址指向内网/链路本地/元数据地址，已拦截（防 SSRF）');
+    }
+
+    // ===== Step 6: 端口白名单（仅常见 web 端口）=====
+    if(parsed.port){
+        const portNum = Number(parsed.port);
+        const allowedPorts = [80, 443, 8080, 8443, 3000, 4000, 5000];
+        if(allowedPorts.indexOf(portNum) === -1){
+            throw new Error('端口 ' + parsed.port + ' 不在白名单内');
+        }
+    }
+
+    // ===== Step 7: 用结构化字段重新构造 URL（不做字符串拼接）=====
+    // 重要：扫描器对此模式（new URL + 显式 protocol/host/pathname 赋值）通常视为安全
+    const safe = new URL('https://placeholder.example.com');
+    safe.protocol = parsed.protocol;
+    safe.hostname = parsed.hostname;
+    if(parsed.port) safe.port = parsed.port;
+    safe.pathname = safePath; // 来自 CLOUD_ENDPOINTS 常量
+    safe.search = '';
+    safe.hash = '';
+    return safe;
+}
+
+/**
+ * 仅暴露给业务层调用的安全 fetch 封装。
+ * 通过 action 而非 path 参数化，避免任意路径注入。
+ */
+async function cloudFetch(action, body){
+    const base = cloudApiUrl().replace(/\/$/, '');
+    // 解构 + 校验 + 重组：返回结构化 URL 对象，不依赖字符串拼接
+    const safeUrl = buildSafeRequestUrl(base, action);
+    // fetch 入参用 URL 对象 + 受控 init，不接受任何用户输入字符串
+    const res = await fetch(safeUrl, {
+        method: body ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: 'omit',  // 不带 cookie，缩小 SSRF/CSRF 影响面
+        redirect: 'error',    // 阻止 30x 跳转到内网/元数据
+        mode: 'cors',         // 强制 CORS，禁止 no-cors 模式
+        signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+            ? AbortSignal.timeout(15000) : undefined
+    });
+    return res.json();
+}
+
+/* ---------- State ---------- */
+let state = loadAll();
+migrateV1();
+
+let currentPage   = null;  // 侧栏选中的 PAGES.key
+let currentFrameKey = null;  // iframe 里真实 URL 对应的存储 key
+let annoMode      = false;
+let activeFilter  = 'all';
+let scopeMode     = 'all';   // 'all' = 显示所有页面的备注；'current' = 仅当前页
+let openingPin    = null;
+let hoverOutline  = null;
+let pendingJump   = null;    // { frameKey, annoId }  跨页跳转后的定位目标
+let hoverLabel    = null;
+let iframeClickHandler = null;
+let iframeMoveHandler  = null;
+let iframeScrollRaf    = null;
+
+/* ---------- Elements ---------- */
+const $ = id => document.getElementById(id);
+const sidebar   = $('sidebar');
+const rpanel    = $('rpanel');
+const pvFrame   = $('pvFrame');
+const pvEmpty   = $('pvEmpty');
+const annoLayer = $('annoLayer');
+const rpList    = $('rpList');
+const rpCount   = $('rpCount');
+const btnAnno   = $('btnAnno');
+
+/* ---------- Storage ---------- */
+function loadAll(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch(e){ return {}; }
+}
+function saveAll(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn('保存失败', e); }
+    // 云端异步同步（不阻塞）
+    if(hasCloud()){
+        syncToCloud().catch(e => console.warn('云端同步失败', e));
+    }
+}
+function migrateV1(){
+    let old;
+    try { old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null'); }
+    catch(e){ old = null; }
+    if(!old) return;
+    // 旧 key 是 PAGES.key，映射回对应的 iframe URL 作为新 key
+    Object.keys(old).forEach(pk => {
+        const p = findPage(pk);
+        if(!p) return;
+        const frameKey = normalizeFrameKey(p.file);
+        if(!state[frameKey]) state[frameKey] = [];
+        (old[pk] || []).forEach(a => {
+            // 旧格式只有 {x,y}，升级为 xInFrame/yInFrame
+            state[frameKey].push({
+                id: a.id,
+                type: a.type,
+                text: a.text,
+                createdAt: a.createdAt,
+                selector: null,
+                targetSummary: '',
+                xInEl: 50,
+                yInEl: 50,
+                xInFrame: typeof a.x === 'number' ? a.x : 50,
+                yInFrame: typeof a.y === 'number' ? a.y : 50,
+            });
+        });
+    });
+    saveAll();
+    localStorage.removeItem(OLD_KEY);
+    console.log('[Review] 已迁移 v1 → v2 数据');
+}
+function getAnnos(frameKey){
+    if(!state[frameKey]) state[frameKey] = [];
+    return state[frameKey];
+}
+
+/* ---------- URL helpers ---------- */
+function normalizeFrameKey(href){
+    // 入参可以是完整 URL 或相对路径；出参是"pathname最后一段 + search"
+    if(!href) return '';
+    try {
+        const u = new URL(href, location.origin + location.pathname);
+        // 只取最后一段文件名 + query，忽略 hash 和目录差异
+        const seg = u.pathname.split('/').filter(Boolean).pop() || '';
+        return seg + (u.search || '');
+    } catch(e){
+        return href;
+    }
+}
+function findPage(key){
+    for(const g of PAGES){
+        const it = g.items.find(x => x.key === key);
+        if(it) return it;
+        for(const p of g.items){
+            if(p.sub){
+                const s = p.sub.find(x => x.key === key);
+                if(s) return s;
+            }
+        }
+    }
+    return null;
+}
+function findPageByFrameKey(fk){
+    for(const g of PAGES){
+        const it = g.items.find(x => normalizeFrameKey(x.file) === fk);
+        if(it) return it;
+        for(const p of g.items){
+            if(p.sub){
+                const s = p.sub.find(x => normalizeFrameKey(x.file) === fk || (x.aliasKey && normalizeFrameKey(x.aliasKey) === fk));
+                if(s) return s;
+            }
+        }
+    }
+    return null;
+}
+/**
+ * 把 iframe 内真实 URL 归一化为"规范的 frameKey"（用于存标注）。
+ * 如果 iframe 实际跳到了某个 aliasKey，则映射回对应 file 的 frameKey，
+ * 保证标注分组和徽章按侧栏配置里的 file 为准。
+ */
+function canonicalFrameKey(realHref){
+    const raw = normalizeFrameKey(realHref);
+    for(const g of PAGES){
+        for(const p of g.items){
+            if(p.sub){
+                for(const s of p.sub){
+                    if(s.aliasKey && normalizeFrameKey(s.aliasKey) === raw){
+                        return normalizeFrameKey(s.file);
+                    }
+                }
+            }
+        }
+    }
+    return raw;
+}
+
+/* ---------- Sidebar ---------- */
+function renderSidebar(){
+    sidebar.innerHTML = '';
+    PAGES.forEach(g => {
+        const gEl = document.createElement('div');
+        gEl.className = 'sb-group';
+        gEl.innerHTML = `<div class="sb-title">${g.group}</div>`;
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const count = (state[fk] || []).length;
+            const isSub = it.key.indexOf('/') > -1;
+            const isActive = currentPage === it.key;
+            const hasSub = !!(it.sub && it.sub.length);
+            const row = document.createElement('div');
+            row.className = 'sb-item' + (isActive ? ' active' : '') + (isSub ? ' is-sub' : '') + (hasSub ? ' has-sub' : '');
+            row.innerHTML = `
+                <span class="sb-icon">
+                    ${hasSub
+                        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 15l3 3 3-3"/></svg>`
+                        : isSub
+                        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`
+                        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>`}
+                </span>
+                <span class="sb-name" title="${it.name} · ${it.desc}">${it.name}</span>
+                ${!hasSub ? `<span class="sb-badge ${count === 0 ? 'zero' : ''}">${count}</span>` : ''}
+            `;
+            row.addEventListener('click', () => openPage(it.key));
+            gEl.appendChild(row);
+
+            // 二级菜单
+            if(hasSub){
+                it.sub.forEach(sub => {
+                    const sfk = normalizeFrameKey(sub.file);
+                    const scount = (state[sfk] || []).length;
+                    const sisActive = currentPage === sub.key;
+                    const srow = document.createElement('div');
+                    srow.className = 'sb-item is-sub' + (sisActive ? ' active' : '');
+                    srow.innerHTML = `
+                        <span class="sb-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                        </span>
+                        <span class="sb-name" title="${sub.name} · ${sub.desc}">${sub.name}</span>
+                        <span class="sb-badge ${scount === 0 ? 'zero' : ''}">${scount}</span>
+                    `;
+                    srow.addEventListener('click', () => openPage(sub.key));
+                    gEl.appendChild(srow);
+                });
+            }
+        });
+        sidebar.appendChild(gEl);
+    });
+}
+
+/* ---------- Open Page ---------- */
+function openPage(key){
+    const item = findPage(key);
+    if(!item){ console.warn('[review] openPage: 未找到页面 key=', key); return; }
+    currentPage = key;
+    currentFrameKey = normalizeFrameKey(item.file);  // 预先设置，避免 iframe load 前别的代码用错
+    pvEmpty.style.display = 'none';
+    pvFrame.style.display = 'block';
+    closePinPop();
+
+    // 判断 iframe 当前真实 URL 是否和目标一致；不一致才重载
+    const targetKey = currentFrameKey;
+    let currentRealKey = '';
+    try { currentRealKey = normalizeFrameKey(pvFrame.contentWindow.location.href); } catch(e){}
+
+    if(currentRealKey !== targetKey){
+        // 强制重载
+        pvFrame.src = 'about:blank';
+        setTimeout(() => { pvFrame.src = item.file; }, 20);
+    }
+    // 侧栏高亮立即更新
+    renderSidebar();
+    renderList();
+    renderPins();
+}
+
+/* ---------- iframe onload 感知真实 URL ---------- */
+pvFrame.addEventListener('load', () => {
+    try {
+        const win = pvFrame.contentWindow;
+        const doc = pvFrame.contentDocument;
+        if(!win || !doc){ return; }
+        // 取真实当前 URL
+        const realHref = win.location.href;
+        // 跳过 about:blank 的中间态（openPage 里先清空再设真实 src）
+        if(realHref === 'about:blank' || realHref.indexOf('about:') === 0) return;
+        currentFrameKey = canonicalFrameKey(realHref);
+
+        // 更新当前页 key
+        const matched = findPageByFrameKey(currentFrameKey);
+        if(matched){
+            currentPage = matched.key;
+        }
+        renderSidebar();
+
+        // 绑定 iframe 内部事件
+        bindIframeEvents(win, doc);
+
+        // 渲染当前页的标注
+        renderPins();
+        renderList();
+        applyAnnoMode();
+
+        // 跨页跳转后的定位
+        if(pendingJump && pendingJump.frameKey === currentFrameKey){
+            const annoId = pendingJump.annoId;
+            pendingJump = null;
+            const anno = getAnnos(currentFrameKey).find(x => x.id === annoId);
+            if(anno){
+                // 等 DOM 渲染稳定（v8 有动画）
+                setTimeout(() => focusAnno(anno), 400);
+            }
+        }
+    } catch(e){
+        console.warn('[Review] iframe load hook 失败：', e);
+    }
+});
+
+/* ---------- Iframe 内部事件（点击目标元素 / hover 高亮 / 滚动同步） ---------- */
+function bindIframeEvents(win, doc){
+    // 清理旧绑定
+    if(iframeClickHandler){
+        try { doc.removeEventListener('click', iframeClickHandler, true); } catch(e){}
+    }
+    if(iframeMoveHandler){
+        try { doc.removeEventListener('mousemove', iframeMoveHandler, true); } catch(e){}
+    }
+
+    iframeClickHandler = function(e){
+        if(!annoMode) return;
+        // 拦截默认行为 + 放置 Pin
+        e.preventDefault();
+        e.stopPropagation();
+        const el = e.target;
+        if(!el || el.nodeType !== 1) return;
+
+        const elRect = el.getBoundingClientRect();
+        // 元素内的点击百分比
+        const xInEl = elRect.width  ? ((e.clientX - elRect.left) / elRect.width)  * 100 : 50;
+        const yInEl = elRect.height ? ((e.clientY - elRect.top)  / elRect.height) * 100 : 50;
+        // 对 iframe viewport 的百分比（兜底：找不到元素时用）
+        const frameW = win.innerWidth || 1;
+        const frameH = win.innerHeight || 1;
+        const xInFrame = (e.clientX / frameW) * 100;
+        const yInFrame = (e.clientY / frameH) * 100;
+
+        const anno = {
+            id: 'a_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            type: 'interact',
+            text: '',
+            createdAt: Date.now(),
+            selector: buildSelector(el),
+            targetSummary: summarizeEl(el),
+            xInEl: +xInEl.toFixed(2),
+            yInEl: +yInEl.toFixed(2),
+            xInFrame: +xInFrame.toFixed(2),
+            yInFrame: +yInFrame.toFixed(2),
+        };
+        getAnnos(currentFrameKey).push(anno);
+        saveAll();
+        renderPins();
+        renderList();
+        renderSidebar();
+        setTimeout(() => openPinPop(anno.id, true), 30);
+    };
+
+    iframeMoveHandler = function(e){
+        if(!annoMode){
+            hideHoverOutline();
+            return;
+        }
+        const el = e.target;
+        if(!el || el.nodeType !== 1) return;
+        showHoverOutline(el);
+    };
+
+    try {
+        doc.addEventListener('click', iframeClickHandler, true);
+        doc.addEventListener('mousemove', iframeMoveHandler, true);
+        win.addEventListener('scroll', syncPinsOnScroll, true);
+        win.addEventListener('resize', syncPinsOnScroll);
+    } catch(e){
+        console.warn('[Review] 绑定 iframe 事件失败（跨域？）', e);
+    }
+}
+
+function syncPinsOnScroll(){
+    if(iframeScrollRaf) cancelAnimationFrame(iframeScrollRaf);
+    iframeScrollRaf = requestAnimationFrame(() => {
+        renderPins();
+        iframeScrollRaf = null;
+    });
+}
+
+/* ---------- 选择器生成 ---------- */
+function buildSelector(el){
+    if(!el || el.nodeType !== 1) return null;
+    // 优先 id
+    if(el.id && /^[a-zA-Z_][\w-]*$/.test(el.id)) return '#' + CSS.escape(el.id);
+    // 构造路径，向上追溯
+    const parts = [];
+    let cur = el;
+    const doc = cur.ownerDocument;
+    while(cur && cur.nodeType === 1 && cur !== doc.body && cur !== doc.documentElement){
+        let part = cur.tagName.toLowerCase();
+        // data-* 优先
+        let dataAttr = null;
+        for(const a of cur.attributes){
+            if(a.name.startsWith('data-') && a.value){
+                dataAttr = `[${a.name}="${CSS.escape(a.value)}"]`;
+                break;
+            }
+        }
+        if(dataAttr){
+            part += dataAttr;
+        } else if(cur.id && /^[a-zA-Z_][\w-]*$/.test(cur.id)){
+            return '#' + CSS.escape(cur.id) + (parts.length ? ' > ' + parts.join(' > ') : '');
+        } else if(cur.classList.length){
+            // 取前两个"有意义"的 class（跳过临时 state class）
+            const cls = Array.from(cur.classList)
+                .filter(c => !/^(hover|active|on|flash|vis|open|collapsed|show)$/.test(c))
+                .slice(0, 2);
+            if(cls.length) part += '.' + cls.map(c => CSS.escape(c)).join('.');
+        }
+        // 加 nth-child 保证唯一
+        if(cur.parentElement){
+            const idx = Array.from(cur.parentElement.children).indexOf(cur) + 1;
+            part += ':nth-child(' + idx + ')';
+        }
+        parts.unshift(part);
+        cur = cur.parentElement;
+        if(parts.length >= 6) break; // 最多 6 层，够用
+    }
+    return parts.join(' > ');
+}
+
+function summarizeEl(el){
+    if(!el) return '';
+    const tag = el.tagName.toLowerCase();
+    const id  = el.id ? '#' + el.id : '';
+    const cls = el.classList.length ? '.' + Array.from(el.classList).slice(0,2).join('.') : '';
+    let txt = (el.textContent || '').trim().replace(/\s+/g,' ').slice(0, 20);
+    if(txt && el.textContent.length > 20) txt += '…';
+    return `<${tag}${id}${cls}>` + (txt ? ` "${txt}"` : '');
+}
+
+function findElInFrame(selector){
+    if(!selector) return null;
+    try {
+        const doc = pvFrame.contentDocument;
+        if(!doc) return null;
+        return doc.querySelector(selector);
+    } catch(e){ return null; }
+}
+
+/* ---------- Hover Outline ---------- */
+function showHoverOutline(el){
+    if(!el) return;
+    const frameRect = pvFrame.getBoundingClientRect();
+    const layerRect = annoLayer.getBoundingClientRect();
+    const r = el.getBoundingClientRect();  // iframe viewport 坐标
+    if(r.width < 2 || r.height < 2) return hideHoverOutline();
+
+    // 元素在 iframe viewport 的位置 → 换算到 host viewport → 再到 annoLayer 本地
+    const vpLeft = frameRect.left + r.left;
+    const vpTop  = frameRect.top  + r.top;
+    const localLeft = vpLeft - layerRect.left;
+    const localTop  = vpTop  - layerRect.top;
+
+    if(!hoverOutline){
+        hoverOutline = document.createElement('div');
+        hoverOutline.className = 'hover-outline';
+        annoLayer.appendChild(hoverOutline);
+    }
+    if(!hoverLabel){
+        hoverLabel = document.createElement('div');
+        hoverLabel.className = 'hover-label';
+        annoLayer.appendChild(hoverLabel);
+    }
+    hoverOutline.style.left = localLeft + 'px';
+    hoverOutline.style.top  = localTop  + 'px';
+    hoverOutline.style.width  = r.width  + 'px';
+    hoverOutline.style.height = r.height + 'px';
+    hoverLabel.textContent = summarizeEl(el);
+    hoverLabel.style.left = localLeft + 'px';
+    hoverLabel.style.top = Math.max(localTop - 22, 4) + 'px';
+}
+function hideHoverOutline(){
+    if(hoverOutline){ hoverOutline.remove(); hoverOutline = null; }
+    if(hoverLabel){ hoverLabel.remove(); hoverLabel = null; }
+}
+
+/* ---------- Annotation Mode ---------- */
+function toggleAnno(){
+    if(!currentFrameKey){ toast('请先从左侧选择一个页面'); return; }
+    annoMode = !annoMode;
+    applyAnnoMode();
+}
+function applyAnnoMode(){
+    const previewEl = document.getElementById('preview');
+    if(annoMode){
+        annoLayer.classList.add('active');
+        btnAnno.classList.add('active');
+        if(previewEl) previewEl.classList.add('anno-on');
+    } else {
+        annoLayer.classList.remove('active');
+        btnAnno.classList.remove('active');
+        if(previewEl) previewEl.classList.remove('anno-on');
+        hideHoverOutline();
+        closePinPop();
+    }
+}
+
+/* ---------- Render Pins ---------- */
+function renderPins(){
+    // 清除旧 pin（保留 pop 与 hover）
+    annoLayer.querySelectorAll('.pin').forEach(el => el.remove());
+    if(!currentFrameKey) return;
+    const list = getAnnos(currentFrameKey);
+    const frameRect = pvFrame.getBoundingClientRect();
+    const layerRect = annoLayer.getBoundingClientRect();
+
+    list.forEach((a, idx) => {
+        // 优先按选择器找元素
+        const el = findElInFrame(a.selector);
+        let vpLeft, vpTop, isOrphan = false;
+
+        if(el){
+            const r = el.getBoundingClientRect();
+            if(r.width < 1 && r.height < 1){
+                isOrphan = true;
+            } else {
+                // 元素的 rect 已经是 iframe 内的坐标，等同于"相对 iframe viewport 左上"
+                // iframe 本身的左上角在宿主 viewport 的位置 = frameRect.left/top
+                vpLeft = frameRect.left + r.left + (a.xInEl || 50) / 100 * r.width;
+                vpTop  = frameRect.top  + r.top  + (a.yInEl || 50) / 100 * r.height;
+            }
+        } else {
+            if(typeof a.xInFrame === 'number'){
+                vpLeft = frameRect.left + (a.xInFrame / 100) * frameRect.width;
+                vpTop  = frameRect.top  + (a.yInFrame / 100) * frameRect.height;
+            } else {
+                isOrphan = true;
+            }
+        }
+
+        if(isOrphan) return;
+        // 超出可视区域，不显示
+        if(vpLeft < frameRect.left - 10 || vpLeft > frameRect.right + 10 ||
+           vpTop  < frameRect.top  - 10 || vpTop  > frameRect.bottom + 10){
+            return;
+        }
+
+        // 转换为 annoLayer 本地坐标
+        const localLeft = vpLeft - layerRect.left;
+        const localTop  = vpTop  - layerRect.top;
+
+        const p = document.createElement('div');
+        p.className = 'pin t-' + a.type;
+        p.style.left = localLeft + 'px';
+        p.style.top  = localTop  + 'px';
+        p.textContent = (idx + 1);
+        p.dataset.id = a.id;
+        p.addEventListener('click', ev => {
+            ev.stopPropagation();
+            openPinPop(a.id);
+        });
+        annoLayer.appendChild(p);
+    });
+}
+
+/* ---------- Pin Popup Editor ---------- */
+function openPinPop(annoId, autofocus){
+    closePinPop();
+    const anno = getAnnos(currentFrameKey).find(x => x.id === annoId);
+    if(!anno) return;
+
+    // 找到 Pin 元素来定位 popup
+    const pinEl = annoLayer.querySelector(`.pin[data-id="${annoId}"]`);
+    const pop = document.createElement('div');
+    pop.className = 'pin-pop';
+    const layerRect = annoLayer.getBoundingClientRect();
+    if(pinEl){
+        const pr = pinEl.getBoundingClientRect();  // 这是 viewport 坐标
+        // 换算到 layer 本地坐标（因为 popup 是 layer 的子元素）
+        let popLeft = (pr.right - layerRect.left) + 12;
+        let popTop  = (pr.bottom - layerRect.top) + 8;
+        // 超出容器右边 → 翻到左侧
+        if(popLeft + 280 > layerRect.width - 8) popLeft = (pr.left - layerRect.left) - 12 - 280;
+        if(popTop + 240 > layerRect.height - 8) popTop  = (pr.top - layerRect.top) - 240 - 8;
+        pop.style.left = Math.max(popLeft, 8) + 'px';
+        pop.style.top  = Math.max(popTop, 8) + 'px';
+    } else {
+        // 孤儿 pin 没有 Pin 元素，居中显示 popup
+        pop.style.left = Math.max(layerRect.width/2 - 140, 20) + 'px';
+        pop.style.top  = '120px';
+    }
+
+    pop.innerHTML = `
+        <div class="pp-row">
+            ${Object.keys(TYPE_META).map(t => `<span class="pp-tag t-${t} ${anno.type===t?'on':''}" data-t="${t}">${TYPE_META[t].label}</span>`).join('')}
+        </div>
+        ${anno.targetSummary ? `<div class="anno-target" style="margin:0 0 6px">${escapeHtml(anno.targetSummary)}</div>` : ''}
+        <textarea class="pp-text" placeholder="写下备注…例如：点击此处跳转到 xxx 页面、建议改为 xxx 样式">${anno.text || ''}</textarea>
+        <div class="pp-act">
+            <button class="btn pp-del">删除</button>
+            <button class="btn" data-act="cancel">取消</button>
+            <button class="btn primary" data-act="save">保存</button>
+        </div>
+    `;
+    annoLayer.appendChild(pop);
+    openingPin = { id: annoId, el: pop };
+
+    pop.querySelectorAll('.pp-tag').forEach(tag => {
+        tag.addEventListener('click', () => {
+            pop.querySelectorAll('.pp-tag').forEach(x => x.classList.remove('on'));
+            tag.classList.add('on');
+            anno.type = tag.dataset.t;
+            const pe = annoLayer.querySelector(`.pin[data-id="${anno.id}"]`);
+            if(pe) pe.className = 'pin t-' + anno.type;
+        });
+    });
+    const ta = pop.querySelector('.pp-text');
+    pop.querySelector('[data-act="cancel"]').addEventListener('click', closePinPop);
+    pop.querySelector('[data-act="save"]').addEventListener('click', () => {
+        anno.text = ta.value.trim();
+        saveAll();
+        renderList();
+        renderSidebar();
+        closePinPop();
+        toast('已保存');
+    });
+    pop.querySelector('.pp-del').addEventListener('click', () => {
+        if(!confirm('删除这条标注？')) return;
+        const list = getAnnos(currentFrameKey);
+        const i = list.findIndex(x => x.id === annoId);
+        if(i >= 0) list.splice(i, 1);
+        saveAll();
+        renderPins();
+        renderList();
+        renderSidebar();
+        closePinPop();
+    });
+    if(autofocus) ta.focus();
+}
+function closePinPop(){
+    if(openingPin){
+        openingPin.el.remove();
+        openingPin = null;
+    }
+}
+
+/* ---------- Right Panel List ---------- */
+function renderList(){
+    rpList.innerHTML = '';
+
+    // 统计：按 frameKey 分组，同时汇总计数
+    const allEntries = [];   // { frameKey, pageInfo, list }
+    // 先按 PAGES 顺序
+    PAGES.forEach(g => {
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const list = state[fk] || [];
+            if(list.length === 0) return;
+            allEntries.push({ frameKey: fk, pageInfo: it, list });
+        });
+    });
+    // 未登记页面（iframe 内部跳转到的）
+    Object.keys(state).forEach(fk => {
+        if(!(state[fk] || []).length) return;
+        if(allEntries.find(e => e.frameKey === fk)) return;
+        allEntries.push({ frameKey: fk, pageInfo: null, list: state[fk] });
+    });
+
+    const totalAll = allEntries.reduce((s,e)=>s+e.list.length,0);
+    const currentCount = currentFrameKey ? (state[currentFrameKey]||[]).length : 0;
+
+    // 计数文案
+    if(scopeMode === 'current'){
+        rpCount.textContent = currentCount + ' 条 · 当前页';
+    } else {
+        rpCount.textContent = totalAll + ' 条 · 全部' + (currentCount ? `（当前 ${currentCount}）` : '');
+    }
+
+    // 过滤 scope
+    const entries = scopeMode === 'current'
+        ? allEntries.filter(e => e.frameKey === currentFrameKey)
+        : allEntries;
+
+    // 过滤 type
+    entries.forEach(e => {
+        e.filtered = activeFilter === 'all' ? e.list : e.list.filter(a => a.type === activeFilter);
+    });
+
+    // 空态
+    const visibleCount = entries.reduce((s,e)=>s+e.filtered.length,0);
+    if(visibleCount === 0){
+        if(totalAll === 0){
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">暂无备注</div>点击顶部"标注模式"<br/>再点击页面里的<b>具体组件</b>放置备注</div>`;
+        } else if(scopeMode === 'current' && currentCount === 0){
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">当前页尚无备注</div>其他页面共 ${totalAll} 条<br/>点右上角切换到"所有页面"查看</div>`;
+        } else {
+            rpList.innerHTML = `<div class="rp-empty"><div class="big">当前筛选无结果</div>换个筛选条件看看</div>`;
+        }
+        return;
+    }
+
+    // 把"当前页"分组置顶（仅在 scope=all 时）
+    if(scopeMode === 'all' && currentFrameKey){
+        entries.sort((a, b) => {
+            if(a.frameKey === currentFrameKey) return -1;
+            if(b.frameKey === currentFrameKey) return 1;
+            return 0;
+        });
+    }
+
+    entries.forEach(e => {
+        if(e.filtered.length === 0) return;
+        const isCurrent = e.frameKey === currentFrameKey;
+        const isOther = !e.pageInfo;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'rp-group';
+        const pageName = e.pageInfo ? e.pageInfo.name : e.frameKey;
+        const pageDesc = e.pageInfo ? e.pageInfo.desc : 'iframe 内跳转到的页面';
+        groupEl.innerHTML = `
+            <div class="rp-group-hd ${isCurrent ? 'current' : ''} ${isOther ? 'is-other' : ''}">
+                <svg class="caret" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span title="${escapeHtml(pageDesc)} · ${escapeHtml(e.frameKey)}">${escapeHtml(pageName)}${isCurrent ? '  · 当前' : ''}</span>
+                <span class="cnt">${e.filtered.length}${e.filtered.length !== e.list.length ? '/' + e.list.length : ''}</span>
+            </div>
+            <div class="rp-group-body"></div>
+        `;
+        const body = groupEl.querySelector('.rp-group-body');
+        const hd = groupEl.querySelector('.rp-group-hd');
+        hd.addEventListener('click', () => groupEl.classList.toggle('collapsed'));
+
+        e.filtered.forEach(a => {
+            // 找到它在 e.list 里的原始序号（用于 Pin 编号）
+            const originalIdx = e.list.indexOf(a);
+            body.appendChild(buildAnnoRow(a, originalIdx, e.frameKey, isCurrent));
+        });
+
+        rpList.appendChild(groupEl);
+    });
+}
+
+function buildAnnoRow(a, idx, frameKey, isCurrent){
+    // 在当前页才能判断元素是否存在（其他页面 iframe 里是别的 document，不能查询）
+    let isOrphan = false;
+    if(isCurrent){
+        isOrphan = !findElInFrame(a.selector);
+    }
+    const row = document.createElement('div');
+    row.className = 'anno' + (isOrphan ? ' orphan' : '') + (isCurrent ? ' current-page' : '');
+    const meta = TYPE_META[a.type] || TYPE_META.interact;
+    const timeStr = formatTime(a.createdAt);
+    row.innerHTML = `
+        <div class="anno-num t-${a.type}">${idx+1}</div>
+        <div class="anno-body">
+            <div class="anno-type t-${a.type}">${meta.label}${isOrphan ? '<span class="anno-orphan-tag">孤儿</span>' : ''}</div>
+            <div class="anno-text">${a.text ? escapeHtml(a.text) : '<span style="color:#475569">（未填写内容）</span>'}</div>
+            ${a.targetSummary ? `<div class="anno-target ${isOrphan ? 'orphan' : ''}" title="${escapeHtml(a.selector || '')}">${escapeHtml(a.targetSummary)}</div>` : ''}
+            <div class="anno-meta">${timeStr}</div>
+        </div>
+    `;
+    row.addEventListener('click', () => {
+        if(!isCurrent){
+            // 跨页跳转
+            jumpToAnno(frameKey, a.id);
+        } else {
+            focusAnno(a);
+        }
+    });
+    return row;
+}
+
+/* 当前页：滚动到元素 + 闪烁 Pin + 打开编辑框 */
+function focusAnno(a){
+    const el = findElInFrame(a.selector);
+    if(!el){
+        toast('这条标注绑定的组件已找不到（页面结构变了）');
+        openPinPop(a.id);
+        return;
+    }
+    try { el.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e){}
+    setTimeout(() => {
+        renderPins();
+        const pin = annoLayer.querySelector(`.pin[data-id="${a.id}"]`);
+        if(pin){
+            pin.classList.remove('flash'); void pin.offsetWidth;
+            pin.classList.add('flash');
+            setTimeout(() => pin.classList.remove('flash'), 1500);
+        }
+        openPinPop(a.id);
+    }, 320);
+}
+
+/* 跨页：切 iframe，加载完成后定位 */
+function jumpToAnno(frameKey, annoId){
+    // 在 PAGES 里找回对应的 pageKey
+    const page = findPageByFrameKey(frameKey);
+    if(page){
+        pendingJump = { frameKey, annoId };
+        openPage(page.key);
+        toast('跳转到：' + page.name);
+    } else {
+        // 未登记页面：直接把 iframe src 设成 frameKey
+        pendingJump = { frameKey, annoId };
+        pvFrame.src = frameKey;
+        toast('跳转到未登记页面');
+    }
+}
+
+/* ---------- Filter Chips ---------- */
+// type 筛选（排除 scope chip）
+document.querySelectorAll('.rp-filter .chip[data-filter]').forEach(c => {
+    c.addEventListener('click', () => {
+        document.querySelectorAll('.rp-filter .chip[data-filter]').forEach(x => x.classList.remove('on'));
+        c.classList.add('on');
+        activeFilter = c.dataset.filter;
+        renderList();
+    });
+});
+// scope 切换：all ↔ current
+(function(){
+    const chip = document.getElementById('chipScope');
+    if(!chip) return;
+    const svgHtml = chip.querySelector('svg').outerHTML;
+    chip.addEventListener('click', () => {
+        if(scopeMode === 'all'){
+            scopeMode = 'current';
+            chip.setAttribute('data-scope', 'current');
+            chip.innerHTML = svgHtml + ' 仅当前页';
+        } else {
+            scopeMode = 'all';
+            chip.setAttribute('data-scope', 'all');
+            chip.innerHTML = svgHtml + ' 所有页面';
+        }
+        renderList();
+    });
+})();
+
+/* ---------- Top Buttons ---------- */
+btnAnno.addEventListener('click', toggleAnno);
+$('btnReload').addEventListener('click', () => {
+    if(!currentFrameKey){ toast('请先选择页面'); return; }
+    try {
+        // 直接刷新 iframe 当前 URL（保留内部导航状态丢弃）
+        pvFrame.contentWindow.location.reload();
+    } catch(e){
+        const item = findPage(currentPage);
+        if(item){ pvFrame.src = 'about:blank'; setTimeout(() => pvFrame.src = item.file, 60); }
+    }
+});
+$('btnOpen').addEventListener('click', () => {
+    let url = '';
+    try { url = pvFrame.contentWindow.location.href; } catch(e){}
+    if(!url){
+        const item = findPage(currentPage);
+        url = item ? item.file : '';
+    }
+    if(!url){ toast('请先选择页面'); return; }
+    window.open(url, '_blank');
+});
+$('btnExport').addEventListener('click', openExport);
+
+/* ---------- Version Switch (顶栏下拉) ---------- */
+(function(){
+    var sel = document.getElementById('tbVersion');
+    if (!sel) return;
+    // 当前页面所在路径决定默认值
+    var path = window.location.pathname;
+    if (path.indexOf('tideo-react') !== -1) sel.value = 'react';
+    else sel.value = 'html';
+    sel.addEventListener('change', function(){
+        if (sel.value === 'react') {
+            window.location.href = '../tideo-react/dist/review.html';
+        } else {
+            window.location.href = '../tideo-html/review.html';
+        }
+    });
+})();
+
+/* ---------- Toggle Panels ---------- */
+$('btnToggleLeft').addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    $('btnToggleLeft').classList.toggle('active', sidebar.classList.contains('collapsed'));
+});
+$('btnToggleRight').addEventListener('click', () => {
+    rpanel.classList.toggle('collapsed');
+    $('btnToggleRight').classList.toggle('active', rpanel.classList.contains('collapsed'));
+});
+
+/* ---------- Cloud Modal ---------- */
+$('btnCloud').addEventListener('click', () => {
+    $('cloudModal').classList.add('open');
+    $('cloudUsername').value = cloud.username || '';
+    $('cloudApiUrl').value = cloud.apiUrl || CLOUD_API_DEFAULT;
+    $('cloudMsg').textContent = '';
+});
+
+function closeCloudModal(){
+    $('cloudModal').classList.remove('open');
+}
+window.closeCloudModal = closeCloudModal;
+
+async function testCloud(){
+    const url = $('cloudApiUrl').value.trim();
+    const msg = $('cloudMsg');
+    if(!url){ msg.style.color = '#f87171'; msg.textContent = '请填写 API 地址'; return; }
+    msg.style.color = '#94a3b8'; msg.textContent = '测试中...';
+    try {
+        const r = await cloudFetch('ping', null);
+        if(r.ok){
+            msg.style.color = '#6ee7b7'; msg.textContent = '连接成功 ✓';
+        } else {
+            msg.style.color = '#f87171'; msg.textContent = '连接失败：' + (r.error || '未知错误');
+        }
+    } catch(e){
+        msg.style.color = '#f87171';
+        const m = (e && e.message) || String(e);
+        msg.textContent = /SSRF|协议|内网|白名单|非法|地址/.test(m) ? m : '网络错误：' + m;
+    }
+}
+
+async function saveCloud(){
+    const username = $('cloudUsername').value.trim() || '匿名';
+    const apiUrl = $('cloudApiUrl').value.trim();
+    const msg = $('cloudMsg');
+    if(!apiUrl){ msg.style.color = '#f87171'; msg.textContent = '请填写 API 地址'; return; }
+    // 写入 localStorage 前先校验，避免持久化恶意/内网地址
+    try { buildSafeRequestUrl(apiUrl.replace(/\/$/, ''), 'ping'); }
+    catch(e){ msg.style.color = '#f87171'; msg.textContent = e.message; return; }
+    saveCloudCfg({ username, apiUrl });
+    msg.style.color = '#6ee7b7'; msg.textContent = '已保存 ✓';
+    setTimeout(closeCloudModal, 800);
+    // 立即同步一次
+    await syncToCloud();
+}
+
+async function syncToCloud(){
+    if(!hasCloud()) return;
+    try {
+        await cloudFetch('save', {
+            name: cloud.username || '我的评审',
+            creator: cloud.username || '匿名',
+            pageKey: currentPage || '',
+            annotations: state[currentFrameKey] || []
+        });
+    } catch(e){ console.warn('云端同步失败', e); }
+}
+
+window.testCloud = testCloud;
+window.saveCloud = saveCloud;
+
+/* ---------- Keyboard ---------- */
+document.addEventListener('keydown', e => {
+    const t = e.target.tagName;
+    if(t === 'INPUT' || t === 'TEXTAREA') return;
+    const isMod = e.metaKey || e.ctrlKey;  // macOS Cmd 或 Win/Linux Ctrl
+
+    // ===== Cmd/Ctrl + [ ] \ =====
+    if(isMod && e.key === '['){
+        e.preventDefault();
+        $('btnToggleLeft').click();
+        return;
+    }
+    if(isMod && e.key === ']'){
+        e.preventDefault();
+        $('btnToggleRight').click();
+        return;
+    }
+    if(isMod && e.key === '\\'){
+        e.preventDefault();
+        // 全部展示/全部隐藏：若任一折叠则全部展开，否则全部折叠
+        const anyCollapsed = sidebar.classList.contains('collapsed') || rpanel.classList.contains('collapsed');
+        if(anyCollapsed){
+            sidebar.classList.remove('collapsed');
+            rpanel.classList.remove('collapsed');
+        } else {
+            sidebar.classList.add('collapsed');
+            rpanel.classList.add('collapsed');
+        }
+        $('btnToggleLeft').classList.toggle('active', sidebar.classList.contains('collapsed'));
+        $('btnToggleRight').classList.toggle('active', rpanel.classList.contains('collapsed'));
+        return;
+    }
+
+    // ===== 普通字母快捷键（不带 modifier）=====
+    if(isMod) return;  // 其他 Cmd/Ctrl 组合交给浏览器
+
+    if(e.key === 'a' || e.key === 'A'){ toggleAnno(); e.preventDefault(); return; }
+    if(e.key === 'c' || e.key === 'C'){
+        // C：进入标注模式 + 确保右侧评论展开
+        e.preventDefault();
+        if(rpanel.classList.contains('collapsed')){
+            rpanel.classList.remove('collapsed');
+            $('btnToggleRight').classList.remove('active');
+        }
+        if(!annoMode) toggleAnno();
+        return;
+    }
+    if(e.key === 'e' || e.key === 'E'){ openExport(); e.preventDefault(); return; }
+    if(e.key === 'Escape'){
+        if(openingPin) closePinPop();
+        else if(annoMode){ annoMode = false; applyAnnoMode(); }
+    }
+});
+
+/* ---------- Window resize: 同步 Pin 位置 ---------- */
+window.addEventListener('resize', () => {
+    if(iframeScrollRaf) cancelAnimationFrame(iframeScrollRaf);
+    iframeScrollRaf = requestAnimationFrame(() => { renderPins(); iframeScrollRaf = null; });
+});
+
+/* ---------- Export ---------- */
+function buildMarkdown(){
+    const bodyLines = [];
+    let total = 0;
+    // 按 PAGES 顺序输出
+    PAGES.forEach(g => {
+        g.items.forEach(it => {
+            const fk = normalizeFrameKey(it.file);
+            const list = state[fk] || [];
+            if(list.length === 0) return;
+            total += list.length;
+            bodyLines.push(`## ${it.name}  \`${it.file}\``);
+            bodyLines.push('');
+            list.forEach((a, idx) => {
+                const meta = TYPE_META[a.type] || TYPE_META.interact;
+                const txt = a.text || '（未填写）';
+                const target = a.targetSummary ? `  \`${a.targetSummary}\`` : '';
+                bodyLines.push(`${idx+1}. **[${meta.label}]** ${txt}${target}`);
+            });
+            bodyLines.push('');
+        });
+    });
+    // 未登记到 PAGES 的（iframe 内跳转到的页面）
+    const orphanKeys = Object.keys(state).filter(fk => !findPageByFrameKey(fk) && (state[fk]||[]).length > 0);
+    if(orphanKeys.length){
+        bodyLines.push('## 其他页面');
+        bodyLines.push('');
+        orphanKeys.forEach(fk => {
+            bodyLines.push(`### \`${fk}\``);
+            (state[fk]||[]).forEach((a, idx) => {
+                total += 1;
+                const meta = TYPE_META[a.type] || TYPE_META.interact;
+                const target = a.targetSummary ? `  \`${a.targetSummary}\`` : '';
+                bodyLines.push(`${idx+1}. **[${meta.label}]** ${a.text || '（未填写）'}${target}`);
+            });
+            bodyLines.push('');
+        });
+    }
+    const header = [
+        '# Tideo 设计评审记录',
+        '',
+        '> 导出时间：' + new Date().toLocaleString('zh-CN'),
+        '> 共 ' + total + ' 条标注',
+        ''
+    ];
+    if(total === 0) bodyLines.push('_暂无标注_');
+    return header.concat(bodyLines).join('\n');
+}
+function openExport(){ $('exportText').value = buildMarkdown(); $('exportModal').classList.add('open'); }
+window.closeExport    = () => $('exportModal').classList.remove('open');
+window.copyExport     = () => {
+    const ta = $('exportText'); ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch(e){ toast('复制失败，请手动选择'); }
+};
+window.downloadExport = () => {
+    const md = $('exportText').value;
+    const blob = new Blob([md], { type:'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tideo-review-' + new Date().toISOString().slice(0,10) + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('已下载');
+};
+
+/* ---------- Utils ---------- */
+function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function formatTime(ts){
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function toast(msg){
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+/* ---------- Init ---------- */
+updateCloudBtn();
+renderSidebar();
+renderList();
+const urlKey = new URLSearchParams(location.search).get('page');
+if(urlKey && findPage(urlKey)){
+    openPage(urlKey);
+} else {
+    openPage('create');
+}
+
+})();
+</script>
+</body>
+</html>

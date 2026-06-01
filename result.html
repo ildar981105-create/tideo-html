@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作品 — Tideo</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===== 作品页全局 ===== */
+        .result-page {
+            padding: 32px 40px 40px;
+            max-width: 100%;
+            position: relative;
+        }
+        .result-page.has-detail {
+            /* 浮动卡片不影响主内容布局 */
+        }
+
+        /* ===== 作品页入场微动效 ===== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cardExit {
+            to { opacity: 0; transform: scale(0.95) translateY(8px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .filter-bar, .result-card, .detail-panel.open .dp-video-wrap,
+            .detail-panel.open .dp-tags, .detail-panel.open .dp-title,
+            .detail-panel.open .dp-desc, .detail-panel.open .dp-meta,
+            .detail-panel.open .dp-actions {
+                opacity: 1 !important;
+                animation: none !important;
+                transform: none !important;
+            }
+        }
+        .filter-bar {
+            opacity: 0;
+            animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) 0.1s forwards;
+        }
+        /* 卡片 stagger fade-up（由 JS 驱动，不在 CSS 中默认隐藏） */
+        .result-card.will-anim {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .result-card.anim-in {
+            animation: fadeUp 0.4s cubic-bezier(.16,1,.3,1) forwards;
+        }
+        /* 筛选 tab 容器 — sliding pill */
+        .filter-tabs {
+            position: relative;
+        }
+        .filter-tabs::before {
+            content: '';
+            position: absolute;
+            background: #1e293b;
+            border-radius: 100px;
+            transition: all 0.3s cubic-bezier(.16,1,.3,1);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .filter-tab {
+            position: relative;
+            z-index: 1;
+        }
+        /* 详情面板内容 cascade */
+        .detail-panel.open .dp-video-wrap { opacity: 0; animation: fadeUp 0.35s cubic-bezier(.16,1,.3,1) 0.05s forwards; }
+        .detail-panel.open .dp-tags { opacity: 0; animation: fadeUp 0.3s cubic-bezier(.16,1,.3,1) 0.12s forwards; }
+        .detail-panel.open .dp-title { opacity: 0; animation: fadeUp 0.3s cubic-bezier(.16,1,.3,1) 0.18s forwards; }
+        .detail-panel.open .dp-desc { opacity: 0; animation: fadeUp 0.3s cubic-bezier(.16,1,.3,1) 0.24s forwards; }
+        .detail-panel.open .dp-meta { opacity: 0; animation: fadeUp 0.3s cubic-bezier(.16,1,.3,1) 0.3s forwards; }
+        .detail-panel.open .dp-actions { opacity: 0; animation: fadeUp 0.3s cubic-bezier(.16,1,.3,1) 0.36s forwards; }
+        /* 卡片删除退场动画 */
+        .result-card.anim-out {
+            animation: cardExit 0.3s cubic-bezier(.4,0,.2,1) forwards;
+        }
+
+        /* ===== Logo ===== */
+        .sidebar-logo-text {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1e293b;
+            letter-spacing: -0.02em;
+            padding: 20px 0 16px;
+            text-align: center;
+        }
+
+        /* ===== 筛选栏 ===== */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+        }
+        .filter-tab {
+            padding: 8px 20px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #64748b;
+            background: none;
+            border: none;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            line-height: 1.4;
+        }
+        .filter-tab:hover {
+            color: #334155;
+            background: rgba(0,0,0,0.03);
+        }
+        .filter-tab.active {
+            color: #fff;
+            background: #1e293b;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            width: 220px;
+            margin-left: auto;
+            transition: all 0.2s ease;
+        }
+        .search-box:focus-within {
+            border-color: #94a3b8;
+            box-shadow: 0 0 0 3px rgba(148,163,184,0.1);
+        }
+        .search-box svg { color: #94a3b8; flex-shrink: 0; }
+        .search-box input {
+            background: none; border: none; outline: none;
+            color: #1e293b; font-size: 0.82rem;
+            flex: 1; min-width: 0; width: 100%;
+            font-family: inherit;
+        }
+        .search-box input::placeholder { color: #94a3b8; }
+
+        /* ===== 日期分组 ===== */
+        .date-group {
+            margin-bottom: 28px;
+        }
+        .date-group:last-child { margin-bottom: 0; }
+        .date-label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+
+        /* ===== 卡片网格 ===== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 14px;
+        }
+
+        /* ===== 任务卡片 ===== */
+        .result-card {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(.4,0,.2,1);
+            background: #fff;
+            border: 2px solid transparent;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .result-card.selected {
+            border-color: #1e293b;
+            box-shadow: 0 4px 20px rgba(30,41,59,0.12);
+        }
+
+        /* 缩略图 */
+        .rc-thumb {
+            position: relative;
+            aspect-ratio: 16/10;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+        .rc-thumb video,
+        .rc-thumb canvas,
+        .rc-thumb img {
+            width: 100%; height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        /* 底部渐变遮罩 */
+        .rc-thumb::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 60%;
+            background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 100%);
+            pointer-events: none;
+        }
+
+        /* 缩略图内叠加信息 */
+        .rc-overlay-info {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 10px 12px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .rc-filename {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .rc-bottom-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .rc-status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            font-size: 0.62rem;
+            font-weight: 600;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+        .rc-status-tag--done {
+            background: rgba(34,197,94,0.85);
+            color: #fff;
+        }
+        .rc-status-tag--processing {
+            background: rgba(59,130,246,0.85);
+            color: #fff;
+        }
+        .rc-status-tag--processing .rc-spin {
+            width: 8px; height: 8px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .rc-status-tag--failed {
+            background: rgba(239,68,68,0.85);
+            color: #fff;
+        }
+        .rc-time {
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.8);
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* hover 播放按钮 */
+        .rc-thumb-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+        }
+        .result-card:hover .rc-thumb-overlay { opacity: 1; }
+        .rc-play {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .result-card:hover .rc-play { transform: scale(1.1); }
+
+        /* ===== 右侧详情面板（浮动卡片） ===== */
+        .detail-panel {
+            position: fixed;
+            top: 50%; right: 24px;
+            transform: translate(calc(100% + 40px), -50%);
+            width: 360px;
+            max-height: calc(100vh - 48px);
+            background: #fff;
+            border-radius: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.04);
+            opacity: 0;
+            overflow: hidden;
+        }
+        .detail-panel.open {
+            transform: translate(0, -50%);
+            opacity: 1;
+        }
+
+        /* 面板视频预览 */
+        .dp-video-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #0f172a;
+            flex-shrink: 0;
+            overflow: hidden;
+            border-radius: 20px 20px 0 0;
+        }
+        .dp-video-wrap video,
+        .dp-video-wrap canvas {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .dp-play-btn {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            z-index: 2;
+        }
+        .dp-play-btn:hover {
+            background: rgba(0,0,0,0.6);
+            transform: translate(-50%,-50%) scale(1.06);
+        }
+        /* 视频进度条 */
+        .dp-progress {
+            position: absolute;
+            bottom: 0; left: 16px; right: 16px;
+            height: 3px;
+            background: rgba(255,255,255,0.15);
+            z-index: 2;
+            border-radius: 2px;
+        }
+        .dp-progress-bar {
+            height: 100%;
+            background: #3b82f6;
+            width: 0%;
+            transition: width 0.1s linear;
+            border-radius: 2px;
+        }
+        /* 音量按钮 */
+        .dp-volume-btn {
+            position: absolute;
+            bottom: 14px; right: 14px;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            z-index: 2;
+            transition: background 0.15s;
+        }
+        .dp-volume-btn:hover { background: rgba(0,0,0,0.55); }
+
+        /* 面板内容 */
+        .dp-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 22px 22px;
+        }
+        .dp-body::-webkit-scrollbar { width: 3px; }
+        .dp-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 2px; }
+        .dp-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .dp-desc {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        /* 功能标签 */
+        .dp-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .dp-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #475569;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 100px;
+        }
+        .dp-tag:first-child {
+            background: #1e293b;
+            color: #fff;
+            border-color: #1e293b;
+        }
+
+        /* 元数据表 */
+        .dp-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 22px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #f1f5f9;
+        }
+        .dp-meta-row {
+            display: flex;
+            align-items: center;
+        }
+        .dp-meta-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            width: 68px;
+            flex-shrink: 0;
+        }
+        .dp-meta-value {
+            font-size: 0.78rem;
+            color: #334155;
+            font-weight: 500;
+        }
+        .dp-meta-value.link {
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            max-width: calc(100% - 76px);
+        }
+        .dp-meta-link-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            min-width: 0;
+            font-size: 0.72rem;
+        }
+        .dp-meta-copy {
+            flex-shrink: 0;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: color 0.15s;
+            background: none;
+            border: none;
+            padding: 0;
+            display: flex;
+        }
+        .dp-meta-copy:hover { color: #475569; }
+
+        /* 操作按钮 */
+        .dp-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .dp-action-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 9px 0;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #475569;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .dp-action-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #1e293b;
+        }
+        .dp-action-btn svg { flex-shrink: 0; }
+
+        /* 主 CTA */
+        .dp-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px 0;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #fff;
+            background: #1e293b;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dp-cta:hover {
+            background: #334155;
+            box-shadow: 0 4px 16px rgba(30,41,59,0.15);
+        }
+        .dp-cta svg { flex-shrink: 0; }
+
+        /* 删除按钮 */
+        .dp-delete {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px 0;
+            margin-top: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #94a3b8;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .dp-delete:hover {
+            color: #ef4444;
+            background: rgba(239,68,68,0.06);
+        }
+        .dp-delete svg { flex-shrink: 0; }
+
+        /* ===== 空状态 ===== */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+            text-align: center;
+            color: #94a3b8;
+        }
+        .empty-state svg { margin-bottom: 16px; color: #cbd5e1; }
+        .empty-state h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; color: #64748b; }
+        .empty-state p { font-size: 0.8rem; color: #94a3b8; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== 亮色侧边栏 ===== */
+        [data-theme="light"] body, [data-theme="light"] .creator-layout { background: linear-gradient(180deg, transparent 35%, #F5F8FC 55%), linear-gradient(90deg, #ECF4FF 0%, #EBEBFF 45%, #FFF8FA 80%, #F5F8FC 100%), #F5F8FC !important; color: #1e293b !important; }
+        [data-theme="light"] .icon-sidebar { background: transparent !important; border-right: none !important; backdrop-filter: none !important; }
+        [data-theme="light"] .icon-nav-item { color: #475569 !important; }
+        [data-theme="light"] .icon-nav-item:hover { color: #1e293b !important; background: rgba(0,0,0,0.04) !important; }
+        [data-theme="light"] .icon-nav-item.active { color: #1e293b !important; background: rgba(255,255,255,0.85) !important; border-radius: 14px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.06) !important; }
+        .nav-icon { display: block; }
+        .icon-nav-item .nav-icon--on { display: none; }
+        .icon-nav-item .nav-icon--off { display: block; }
+        .icon-nav-item.active .nav-icon--on { display: block; }
+        .icon-nav-item.active .nav-icon--off { display: none; }
+        [data-theme="light"] .topbar { border-color: rgba(0,0,0,0.06) !important; }
+        [data-theme="light"] .credits-badge { color: #64748b !important; border-color: rgba(0,0,0,0.08) !important; background: rgba(0,0,0,0.02) !important; }
+
+        /* 用户下拉菜单 */
+        .icon-nav-avatar { position: relative; }
+        .user-dropdown {
+            position: absolute; bottom: 0; left: calc(100% + 10px); width: 200px;
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; padding: 8px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1); opacity: 0; visibility: hidden;
+            transform: translateY(6px); transition: all 0.2s cubic-bezier(.4,0,.2,1); z-index: 200;
+        }
+        .user-dropdown.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        .user-dropdown-header { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; }
+        .user-dropdown-avatar {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6, #06b6d4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
+        }
+        .user-dropdown-info { min-width: 0; }
+        .user-dropdown-name { font-size: 0.78rem; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-dropdown-hint { font-size: 0.65rem; color: #94a3b8; }
+        .user-dropdown-divider { height: 1px; background: rgba(0,0,0,0.06); margin: 4px 0; }
+        .user-dropdown-item {
+            display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+            font-size: 0.75rem; font-weight: 500; color: #64748b; border-radius: 8px;
+            text-decoration: none; transition: all 0.15s ease; cursor: pointer;
+        }
+        .user-dropdown-item:hover { color: #1e293b; background: rgba(0,0,0,0.04); }
+        .user-dropdown-logout:hover { color: #ef4444; background: rgba(239,68,68,0.08); }
+
+        @media (max-width: 768px) {
+            .result-page { padding: 20px 16px; }
+            .card-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .search-box { width: auto; margin-left: 0; }
+            .detail-panel { top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: 70vh; border-radius: 20px 20px 0 0; transform: translateY(100%); }
+            .detail-panel.open { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="creator-layout">
+    <!-- 侧边栏 -->
+    <aside class="icon-sidebar">
+        <a href="create.html" class="icon-sidebar-logo" title="Tideo">
+            <span class="logo-wordmark">Tideo</span>
+        </a>
+        <nav class="icon-nav">
+            <a href="create.html" class="icon-nav-item"><img class="nav-icon nav-icon--off" src="assets/icons/nav-create.svg" width="22" height="22" alt=""><img class="nav-icon nav-icon--on" src="assets/icons/nav-create-active.svg" width="22" height="22" alt="">生成</a>
+            <a href="result.html" class="icon-nav-item active"><img class="nav-icon nav-icon--off" src="assets/icons/nav-result.svg" width="22" height="22" alt=""><img class="nav-icon nav-icon--on" src="assets/icons/nav-result-active.svg" width="22" height="22" alt="">作品</a>
+        </nav>
+        <div class="icon-nav-bottom">
+            <a href="api.html" class="icon-nav-item" title="API 管理">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 10V3L4 14H11V21L20 10H13Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </a>
+            <a href="#" class="icon-nav-item theme-toggle-btn" id="themeToggleBtn" title="切换明暗模式" style="display:none">
+                <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M12 1V3M12 21V23M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M1 12H3M21 12H23M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <div class="icon-nav-avatar" id="userAvatar" title="用户"><span id="userAvatarLetter">A</span></div>
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header">
+                    <div class="user-dropdown-avatar" id="dropdownAvatar">A</div>
+                    <div class="user-dropdown-info">
+                        <div class="user-dropdown-name" id="dropdownName">未登录</div>
+                        <div class="user-dropdown-hint" id="dropdownHint">点击登录</div>
+                    </div>
+                </div>
+                <div class="user-dropdown-divider"></div>
+                <a href="#" class="user-dropdown-item" id="userLoginBtn">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H4C2.89543 2 2 2.89543 2 4V12C2 13.1046 2.89543 14 4 14H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10 11L14 8L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    登录
+                </a>
+                <a href="#" class="user-dropdown-item user-dropdown-logout" id="userLogoutBtn" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 2H4C2.89543 2 2 2.89543 2 4V12C2 13.1046 2.89543 14 4 14H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10 11L14 8L10 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    退出登录
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" style="padding-top:0;">
+        <div class="result-page" id="resultPage">
+            <!-- 筛选栏 -->
+            <div class="filter-bar">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="translate">视频译制</button>
+                    <button class="filter-tab" data-filter="live">直播剪辑</button>
+                    <button class="filter-tab" data-filter="generate">视频创作</button>
+                </div>
+                <div class="search-box">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <input type="text" placeholder="请输入关键词搜索" id="taskSearch">
+                </div>
+            </div>
+
+            <!-- 卡片内容区（JS 渲染） -->
+            <div id="cardContainer"></div>
+        </div>
+    </main>
+
+    <!-- 右侧详情面板 -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="dp-video-wrap" id="dpVideoWrap">
+            <video id="dpVideo" preload="metadata" muted loop></video>
+            <button class="dp-play-btn" id="dpPlayBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 5.14v13.72a1 1 0 001.5.86l11.28-6.86a1 1 0 000-1.72L9.5 4.28A1 1 0 008 5.14z" fill="#fff"/></svg>
+            </button>
+            <div class="dp-progress">
+                <div class="dp-progress-bar" id="dpProgressBar"></div>
+            </div>
+            <button class="dp-volume-btn" id="dpVolumeBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M15.54 8.46a5 5 0 010 7.07" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+        </div>
+        <div class="dp-body" id="dpBody">
+            <!-- JS 填充 -->
+        </div>
+    </div>
+
+    <script>
+    // ===== Mock 数据（生产环境会从 localStorage 读取） =====
+    function loadTasks() {
+        var real = [];
+        try { real = JSON.parse(localStorage.getItem('tideo_results') || '[]'); } catch(e) {}
+
+        // 如果没有真实数据，使用 mock 展示
+        if (real.length === 0) {
+            var today = new Date().toISOString().slice(0,10);
+            real = [
+                { id:'m1', name:'英语日常对话教学.mp4', type:'translate', status:'processing', duration:754, date:today, videoUrl:'', features:['影视译制','中译英','标准字幕'] },
+                { id:'m2', name:'旅行vlog学.mp4.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英','标准字幕','充满音色'] },
+                { id:'m3', name:'产品演示.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英'] },
+                { id:'m4', name:'日语教学.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译日','标准字幕'] },
+                { id:'m5', name:'英语日常对话教学.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英'] },
+                { id:'m6', name:'旅行vlog学.mp4.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英','标准字幕','充满音色'] },
+                { id:'m7', name:'英语日常对话教学.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英','标准字幕'] },
+                { id:'m8', name:'英语日常对话教学.mp4', type:'translate', status:'done', duration:754, date:'2026-04-08', videoUrl:'', features:['影视译制','中译英'] },
+            ];
+        }
+
+        return real.map(function(r) {
+            var dur = r.duration || 0;
+            var m = Math.floor(dur / 60), s = Math.round(dur % 60);
+            return {
+                id: r.id,
+                name: r.name || '未命名',
+                type: r.type || 'translate',
+                status: r.status || 'done',
+                duration: m + ':' + String(s).padStart(2,'0'),
+                durationSec: dur,
+                date: (r.date || '').slice(0,10),
+                videoUrl: r.outputUrl || r.videoUrl || '',
+                sourceUrl: r.videoUrl || '',
+                mode: r.mode || 'full',
+                features: r.features || [],
+                elapsed: r.elapsed || 0,
+                size: r.size || '2.65M',
+                resolution: r.resolution || '1080*1080',
+                hue: Math.round(Math.random()*360)
+            };
+        });
+    }
+
+    var tasks = loadTasks();
+    var selectedId = null;
+
+    const TYPE_LABELS = { translate:'视频译制', live:'直播剪辑', generate:'视频创作' };
+
+    function formatDateGroup(dateStr) {
+        var d = new Date(dateStr);
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        var target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        var diff = Math.floor((today - target) / 86400000);
+        if (diff === 0) return '今天';
+        if (diff === 1) return '昨天';
+        if (diff <= 7) return diff + ' 天前';
+        return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function renderCards(filter, query) {
+        var container = document.getElementById('cardContainer');
+        var filtered = tasks.slice();
+        if (filter && filter !== 'all') filtered = filtered.filter(function(t){ return t.type === filter; });
+        if (query) filtered = filtered.filter(function(t){ return t.name.toLowerCase().indexOf(query.toLowerCase()) >= 0; });
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="8" stroke="currentColor" stroke-width="2"/><path d="M20 24L24 28L28 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><h3>暂无作品</h3><p>完成视频任务后会在这里显示</p></div>';
+            return;
+        }
+
+        // 按日期分组
+        var groups = {};
+        filtered.forEach(function(t){
+            var d = t.date || '未知日期';
+            if (!groups[d]) groups[d] = [];
+            groups[d].push(t);
+        });
+        var sortedDates = Object.keys(groups).sort(function(a,b){ return new Date(b) - new Date(a); });
+        var html = '';
+
+        sortedDates.forEach(function(date){
+            html += '<div class="date-group"><div class="date-label">' + formatDateGroup(date) + '</div><div class="card-grid">';
+            groups[date].forEach(function(t){
+                var statusHtml = '';
+                if (t.status === 'processing') {
+                    statusHtml = '<span class="rc-status-tag rc-status-tag--processing"><span class="rc-spin"></span>处理中...</span>';
+                } else if (t.status === 'done') {
+                    statusHtml = '<span class="rc-status-tag rc-status-tag--done">已完成</span>';
+                } else if (t.status === 'failed') {
+                    statusHtml = '<span class="rc-status-tag rc-status-tag--failed">失败</span>';
+                }
+
+                var thumbContent = '';
+                if (t.videoUrl) {
+                    thumbContent = '<video src="'+t.videoUrl+'" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;display:block;" onloadedmetadata="this.currentTime=1"></video>';
+                } else {
+                    thumbContent = '<canvas data-hue="'+(t.hue||200)+'"></canvas>';
+                }
+
+                var isSelected = (t.id === selectedId) ? ' selected' : '';
+
+                html += '<div class="result-card' + isSelected + '" data-id="' + t.id + '" data-type="' + t.type + '">' +
+                    '<div class="rc-thumb">' +
+                        thumbContent +
+                        '<div class="rc-overlay-info">' +
+                            '<div class="rc-filename">' + escHtml(t.name) + '</div>' +
+                            '<div class="rc-bottom-row">' +
+                                statusHtml +
+                                '<span class="rc-time">' + t.duration + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="rc-thumb-overlay"><div class="rc-play"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L12 8L6 12V4Z" fill="white"/></svg></div></div>' +
+                    '</div>' +
+                '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+        renderThumbnails();
+        bindResultCardEvents();
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function renderThumbnails() {
+        document.querySelectorAll('.rc-thumb canvas').forEach(function(cv){
+            var w = cv.parentElement.offsetWidth * 2 || 400;
+            var h = cv.parentElement.offsetHeight * 2 || 250;
+            cv.width = w; cv.height = h;
+            var ctx = cv.getContext('2d');
+            var hue = parseInt(cv.dataset.hue) || 200;
+            // 模拟一个暗色工作室截图效果
+            var grd = ctx.createLinearGradient(0, 0, w, h);
+            grd.addColorStop(0, 'hsl('+ hue +', 15%, 22%)');
+            grd.addColorStop(0.5, 'hsl('+ ((hue+30)%360) +', 12%, 26%)');
+            grd.addColorStop(1, 'hsl('+ ((hue+60)%360) +', 10%, 18%)');
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, w, h);
+            // 模拟显示器高光
+            ctx.globalAlpha = 0.08;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(w*0.2, h*0.15, w*0.6, h*0.45);
+            ctx.globalAlpha = 0.04;
+            ctx.fillRect(w*0.25, h*0.65, w*0.2, h*0.15);
+            ctx.fillRect(w*0.55, h*0.65, w*0.2, h*0.15);
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function bindResultCardEvents() {
+        document.querySelectorAll('.result-card').forEach(function(card) {
+            card.addEventListener('click', function(e) {
+                var id = this.dataset.id;
+                selectCard(id);
+            });
+        });
+    }
+
+    function selectCard(id) {
+        selectedId = id;
+        // 更新选中态
+        document.querySelectorAll('.result-card').forEach(function(c){
+            c.classList.toggle('selected', c.dataset.id === id);
+        });
+        // 找到任务
+        var task = tasks.find(function(t){ return t.id === id; });
+        if (!task) return;
+        openDetailPanel(task);
+    }
+
+    function openDetailPanel(task) {
+        var panel = document.getElementById('detailPanel');
+        var resultPage = document.getElementById('resultPage');
+        var video = document.getElementById('dpVideo');
+        var body = document.getElementById('dpBody');
+
+        // 视频
+        if (task.videoUrl) {
+            video.src = task.videoUrl;
+            video.style.display = 'block';
+        } else {
+            video.removeAttribute('src');
+            video.style.display = 'none';
+            // 用 canvas 替代
+            var wrap = document.getElementById('dpVideoWrap');
+            var existCv = wrap.querySelector('canvas');
+            if (!existCv) {
+                existCv = document.createElement('canvas');
+                wrap.insertBefore(existCv, wrap.firstChild);
+            }
+            var w2 = 380*2, h2 = 214*2;
+            existCv.width = w2; existCv.height = h2;
+            var ctx2 = existCv.getContext('2d');
+            var hue2 = task.hue || 200;
+            var grd2 = ctx2.createLinearGradient(0,0,w2,h2);
+            grd2.addColorStop(0, 'hsl('+hue2+',15%,22%)');
+            grd2.addColorStop(1, 'hsl('+((hue2+60)%360)+',10%,18%)');
+            ctx2.fillStyle = grd2;
+            ctx2.fillRect(0,0,w2,h2);
+            ctx2.globalAlpha = 0.08;
+            ctx2.fillStyle = '#fff';
+            ctx2.fillRect(w2*0.15,h2*0.12,w2*0.7,h2*0.5);
+            ctx2.globalAlpha = 1;
+        }
+
+        // 描述文案
+        var descText = '';
+        if (task.type === 'translate') {
+            descText = '帮我擦除该视频的原字幕，翻译并重新配音，生成完整的译制视频。';
+        } else if (task.type === 'live') {
+            descText = '从直播回放中智能剪辑精彩片段。';
+        } else {
+            descText = 'AI 创意视频生成。';
+        }
+
+        // 功能标签
+        var tagsHtml = '';
+        if (task.features && task.features.length) {
+            task.features.forEach(function(f, i){
+                tagsHtml += '<span class="dp-tag">' + escHtml(f) + '</span>';
+            });
+        }
+
+        // 元数据
+        var createDate = task.date || '—';
+        var fileSize = task.size || '—';
+        var resolution = task.resolution || '—';
+        var linkUrl = task.videoUrl || 'https://km.woa.com/vkm/articles/...';
+
+        body.innerHTML =
+            '<div class="dp-title">' + escHtml(task.name) + '</div>' +
+            '<div class="dp-desc">' + escHtml(descText) + '</div>' +
+            (tagsHtml ? '<div class="dp-tags">' + tagsHtml + '</div>' : '') +
+            '<div class="dp-meta">' +
+                '<div class="dp-meta-row"><span class="dp-meta-label">创建时间</span><span class="dp-meta-value">' + createDate + '</span></div>' +
+                '<div class="dp-meta-row"><span class="dp-meta-label">大小</span><span class="dp-meta-value">' + fileSize + '</span></div>' +
+                '<div class="dp-meta-row"><span class="dp-meta-label">分辨率</span><span class="dp-meta-value">' + resolution + '</span></div>' +
+                '<div class="dp-meta-row"><span class="dp-meta-label">图片链接</span><span class="dp-meta-value link"><span class="dp-meta-link-text">' + escHtml(linkUrl) + '</span><button class="dp-meta-copy" title="复制" onclick="copyText(\'' + escHtml(linkUrl).replace(/'/g,"&#39;") + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5"/></svg></button></span></div>' +
+            '</div>' +
+            '<div class="dp-actions">' +
+                '<button class="dp-action-btn" onclick="downloadVideo(\'' + task.id + '\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 15V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>下载视频</button>' +
+                '<button class="dp-action-btn" onclick="copyVideoLink(\'' + task.id + '\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>复制视频链接</button>' +
+                '<button class="dp-action-btn" onclick="saveToCloud(\'' + task.id + '\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M17 21v-8H7v8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 3v5h8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>保存到云点播</button>' +
+            '</div>' +
+            '<button class="dp-cta" onclick="enterFinetune(\'' + task.id + '\',\'' + task.type + '\')">' + ctaLabel(task.type) + ' <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+            '<button class="dp-delete" onclick="deleteTask(\'' + task.id + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>删除任务</button>';
+
+        // 显示面板
+        panel.classList.add('open');
+        resultPage.classList.add('has-detail');
+    }
+
+    function closeDetailPanel() {
+        var panel = document.getElementById('detailPanel');
+        var resultPage = document.getElementById('resultPage');
+        panel.classList.remove('open');
+        resultPage.classList.remove('has-detail');
+        selectedId = null;
+        document.querySelectorAll('.result-card.selected').forEach(function(c){ c.classList.remove('selected'); });
+    }
+
+    function copyText(txt) {
+        navigator.clipboard.writeText(txt).then(function(){
+            // 简易提示
+        }).catch(function(){});
+    }
+
+    function downloadVideo(id) {
+        var task = tasks.find(function(t){ return t.id === id; });
+        if (task && task.videoUrl) {
+            var a = document.createElement('a');
+            a.href = task.videoUrl;
+            a.download = task.name;
+            a.click();
+        }
+    }
+
+    function copyVideoLink(id) {
+        var task = tasks.find(function(t){ return t.id === id; });
+        if (task && task.videoUrl) {
+            navigator.clipboard.writeText(task.videoUrl).catch(function(){});
+        }
+    }
+
+    function saveToCloud(id) {
+        // placeholder
+    }
+
+    function ctaLabel(type) {
+        if (type === 'generate') return '进入视频创作精调';
+        if (type === 'live') return '进入直播剪辑精调';
+        return '进入视频译制精调';
+    }
+
+    function enterFinetune(id, type) {
+        if (type === 'generate') {
+            window.location.href = 'generate.html?finetune=1&tid=' + encodeURIComponent(id);
+        } else if (type === 'live') {
+            window.location.href = 'livestream-v3.html?tid=' + encodeURIComponent(id);
+        } else {
+            window.location.href = 'translate-v8.html?finetune=1&tid=' + encodeURIComponent(id);
+        }
+    }
+
+    function deleteTask(id) {
+        if (!confirm('确定删除该任务？删除后不可恢复。')) return;
+        // 从内存中删除
+        tasks = tasks.filter(function(t){ return t.id !== id; });
+        // 从 localStorage 中删除
+        try {
+            var records = JSON.parse(localStorage.getItem('tideo_results') || '[]');
+            records = records.filter(function(r){ return r.id !== id; });
+            localStorage.setItem('tideo_results', JSON.stringify(records));
+        } catch(e) {}
+        // 关闭面板，重新渲染
+        closeDetailPanel();
+        renderCards(currentFilter, currentQuery);
+    }
+
+    // 点击面板外关闭
+    document.addEventListener('click', function(e) {
+        var panel = document.getElementById('detailPanel');
+        if (!panel.classList.contains('open')) return;
+        if (panel.contains(e.target)) return;
+        if (e.target.closest('.result-card')) return;
+        closeDetailPanel();
+    });
+
+    // 面板视频播放控制
+    (function(){
+        var video = document.getElementById('dpVideo');
+        var playBtn = document.getElementById('dpPlayBtn');
+        var volBtn = document.getElementById('dpVolumeBtn');
+        var pBar = document.getElementById('dpProgressBar');
+        var playing = false;
+
+        playBtn.addEventListener('click', function(e){
+            e.stopPropagation();
+            if (!video.src) return;
+            if (playing) {
+                video.pause();
+                playing = false;
+                playBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 5.14v13.72a1 1 0 001.5.86l11.28-6.86a1 1 0 000-1.72L9.5 4.28A1 1 0 008 5.14z" fill="#fff"/></svg>';
+            } else {
+                video.play();
+                playing = true;
+                playBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="6" y="5" width="4" height="14" rx="1" fill="#fff"/><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff"/></svg>';
+            }
+        });
+
+        volBtn.addEventListener('click', function(e){
+            e.stopPropagation();
+            video.muted = !video.muted;
+        });
+
+        video.addEventListener('timeupdate', function(){
+            if (video.duration) {
+                pBar.style.width = (video.currentTime / video.duration * 100) + '%';
+            }
+        });
+    })();
+
+    // ===== 筛选 =====
+    var currentFilter = 'translate';
+    var currentQuery = '';
+
+    document.querySelectorAll('.filter-tab').forEach(function(tab){
+        tab.addEventListener('click', function(){
+            document.querySelectorAll('.filter-tab').forEach(function(t){ t.classList.remove('active'); });
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            closeDetailPanel();
+            renderCards(currentFilter, currentQuery);
+        });
+    });
+
+    document.getElementById('taskSearch').addEventListener('input', function(){
+        currentQuery = this.value.trim();
+        renderCards(currentFilter, currentQuery);
+    });
+
+    // ===== ESC 关闭面板 =====
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') closeDetailPanel();
+    });
+
+    // ===== 初始渲染 =====
+    renderCards('translate', '');
+    </script>
+
+    <script src="app.js"></script>
+    <script src="tracker.js"></script>
+
+    <!-- 用户菜单 -->
+    <script>
+    (function() {
+        var avatar = document.getElementById('userAvatar');
+        var avatarLetter = document.getElementById('userAvatarLetter');
+        var dropdown = document.getElementById('userDropdown');
+        var dropdownAvatar = document.getElementById('dropdownAvatar');
+        var dropdownName = document.getElementById('dropdownName');
+        var dropdownHint = document.getElementById('dropdownHint');
+        var loginBtn = document.getElementById('userLoginBtn');
+        var logoutBtn = document.getElementById('userLogoutBtn');
+
+        function updateUserUI() {
+            var raw = localStorage.getItem('tideo_user');
+            if (raw) {
+                try {
+                    var user = JSON.parse(raw);
+                    var initial = user.avatar || user.name.charAt(0).toUpperCase();
+                    avatarLetter.textContent = initial;
+                    dropdownAvatar.textContent = initial;
+                    dropdownName.textContent = user.name;
+                    dropdownHint.textContent = '已登录';
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'flex';
+                } catch(e) {}
+            } else {
+                avatarLetter.textContent = 'A';
+                dropdownAvatar.textContent = 'A';
+                dropdownName.textContent = '未登录';
+                dropdownHint.textContent = '点击登录';
+                loginBtn.style.display = 'flex';
+                logoutBtn.style.display = 'none';
+            }
+        }
+
+        avatar.addEventListener('click', function(e) { e.stopPropagation(); dropdown.classList.toggle('show'); });
+        document.addEventListener('click', function(e) { if (!dropdown.contains(e.target) && e.target !== avatar) dropdown.classList.remove('show'); });
+        loginBtn.addEventListener('click', function(e) { e.preventDefault(); window.location.href = 'login.html'; });
+        logoutBtn.addEventListener('click', function(e) { e.preventDefault(); localStorage.removeItem('tideo_user'); updateUserUI(); dropdown.classList.remove('show'); });
+        updateUserUI();
+        window.addEventListener('storage', function(e) { if (e.key === 'tideo_user') updateUserUI(); });
+    })();
+    </script>
+    <script>
+    /* 卡片 stagger fade-up: MutationObserver 驱动，确保动态渲染的卡片也能动画 */
+    (function(){
+        function animateCards(){
+            var cards = document.querySelectorAll('.result-card:not(.anim-in)');
+            if (!cards.length) return;
+            cards.forEach(function(c){ c.classList.add('will-anim'); });
+            requestAnimationFrame(function(){
+                cards.forEach(function(c, i){
+                    c.style.animationDelay = (i * 50) + 'ms';
+                    c.classList.add('anim-in');
+                });
+            });
+        }
+        /* 监听卡片容器变化 */
+        var container = document.getElementById('cardContainer');
+        if (container) {
+            new MutationObserver(function(){ animateCards(); })
+                .observe(container, { childList: true, subtree: true });
+        }
+        /* 首次已渲染的卡片 */
+        animateCards();
+    })();
+    </script>
+</body>
+</html>
